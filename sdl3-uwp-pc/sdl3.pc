@@ -1,0 +1,9 @@
+# SDL3 for UWP (XboxEmulationHub/SDL3-uwp, built with MSVC) for the Xbox build of xemu
+includedir=C:/Users/GamerDad/XboxEmu/sdl3-uwp/include
+libfile=C:/Users/GamerDad/XboxEmu/sdl3-uwp/build-uwp/Release/SDL3.lib
+
+Name: sdl3
+Description: SDL3 (UWP / Xbox Dev Mode)
+Version: 3.4.16
+Libs: ${libfile}
+Cflags: -I${includedir}

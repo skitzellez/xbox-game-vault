@@ -1,0 +1,60 @@
+# Whitelist: only source, scripts, manifests and notes are tracked. Everything else in this folder
+# (upstream checkouts, downloads, BIOS and game files, builds, logs, keys) stays local.
+/*
+!/.gitignore
+!/README.md
+!/LICENSE
+!/CONTRIBUTING.md
+!/GameVault/
+!/XemuUWP/
+!/XboxProbe/
+!/GLTest/
+!/SDLTest/
+!/sdl3-uwp-pc/
+!/patches/
+!/installer/
+!/docs/
+
+# builds, packages, logs, screenshots
+out/
+dist/
+stage/
+logs/
+crash/
+*.png
+*.log
+*.appx
+*.exe
+*.dll
+*.obj
+*.pdb
+*.map
+*.dmp
+*.iso
+!**/pkg/Assets/*.png
+microsoft.system.package.metadata/
+
+# keys and private settings
+cert/
+*.pfx
+*.cer
+password.txt
+portal.local
+portal_cookies.txt
+jar.txt
+
+# local-only helpers and scratch
+/XemuUWP/tools/put_bios.ps1
+/XemuUWP/crash2_stack.txt
+/XemuUWP/sdl_offs.txt
+/GameVault/test/samples/
+/XemuUWP/pkg/xemu.default.toml
+
+# SpiritBoot images: fetched and checksum-checked by XemuUWP/package.sh
+/XemuUWP/spiritboot/*.bin
+/XemuUWP/pkg/spiritboot/
+/XemuUWP/blank-hdd/
+/XemuUWP/pkg/*.qcow2
+
+# Python caches
+__pycache__/

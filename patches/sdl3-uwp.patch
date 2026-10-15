@@ -1,0 +1,152 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 3a4da91..cc4794e 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -2336,6 +2336,7 @@ elseif(WINDOWS)
+       sdl_glob_sources(
+         "${SDL3_SOURCE_DIR}/src/video/winrt/*.c"
+         "${SDL3_SOURCE_DIR}/src/video/winrt/*.cpp"
++        "${SDL3_SOURCE_DIR}/src/video/windows/SDL_windowsopengl.c"
+         "${SDL3_SOURCE_DIR}/src/render/direct3d11/*.cpp"
+         "${SDL3_SOURCE_DIR}/src/render/direct3d12/SDL_render_d3d12_winrt.cpp"
+       )
+@@ -2466,10 +2467,9 @@ endif()
+   set(HAVE_SDL_TIMERS TRUE)
+ 
+   set(SDL_LOADSO_WINDOWS 1)
+-  if(NOT WINDOWS_STORE)
+-    sdl_glob_sources("${SDL3_SOURCE_DIR}/src/loadso/windows/*.c")
+-    set(HAVE_SDL_LOADSO TRUE)
+-  endif()
++  # UWP too: SDL_sysloadso.c uses LoadPackagedLibrary there, which is how the GL driver (Mesa) is loaded.
++  sdl_glob_sources("${SDL3_SOURCE_DIR}/src/loadso/windows/*.c")
++  set(HAVE_SDL_LOADSO TRUE)
+ 
+   if(NOT WINDOWS_STORE)
+     sdl_glob_sources(
+diff --git a/src/core/winrt/SDL_winrtapp_direct3d.cpp b/src/core/winrt/SDL_winrtapp_direct3d.cpp
+index 5b8817c..e904eb7 100644
+--- a/src/core/winrt/SDL_winrtapp_direct3d.cpp
++++ b/src/core/winrt/SDL_winrtapp_direct3d.cpp
+@@ -614,6 +614,21 @@ void SDL_WinRTApp::OnAppActivated(CoreApplicationView ^ applicationView, IActiva
+ {
+     CoreWindow::GetForCurrentThread()->Activate();
+ 
++    // Local addition: tell the app how it was started, as the hint
++    // SDL_WINRT_ACTIVATION_URI. It holds the whole protocol link (for example
++    // "xemu:?disc=E%3A%5Cgame.iso") or "launch" for a start from the tile. The
++    // hint is set again on every activation, also while the app is running.
++    if (args->Kind ==
++        Windows::ApplicationModel::Activation::ActivationKind::Protocol) {
++        Platform::String ^ uri = ((Windows::ApplicationModel::Activation::
++            ProtocolActivatedEventArgs ^)(args))->Uri->AbsoluteUri;
++        char *utf8 = WIN_StringToUTF8W(uri->Data());
++        SDL_SetHint("SDL_WINRT_ACTIVATION_URI", utf8 ? utf8 : "launch");
++        SDL_free(utf8);
++    } else {
++        SDL_SetHint("SDL_WINRT_ACTIVATION_URI", "launch");
++    }
++
+     if (args->Kind ==
+         Windows::ApplicationModel::Activation::ActivationKind::Protocol) {
+ 
+diff --git a/src/video/winrt/SDL_winrtvideo.cpp b/src/video/winrt/SDL_winrtvideo.cpp
+index 5e832c9..23a50e5 100644
+--- a/src/video/winrt/SDL_winrtvideo.cpp
++++ b/src/video/winrt/SDL_winrtvideo.cpp
+@@ -118,7 +118,7 @@ static void WINRT_GetGamingDeviceMaxResolution(Uint32 *max_w, Uint32 *max_h)
+ #else
+     GAMING_DEVICE_MODEL_INFORMATION info;
+     SDL_zero(info);
+-    if (!GetGamingDeviceModelInformation(&info)) {
++    if (FAILED(GetGamingDeviceModelInformation(&info))) { // returns an HRESULT, not a BOOL
+         *max_w = 1920;
+         *max_h = 1080;
+         return;
+@@ -162,7 +162,7 @@ static void WINRT_LogOutputResolutionOnce(void)
+ #ifdef SDL_WINRT_HAVE_GAMING_DEVICE_INFORMATION
+     GAMING_DEVICE_MODEL_INFORMATION info;
+     SDL_zero(info);
+-    if (GetGamingDeviceModelInformation(&info)) {
++    if (SUCCEEDED(GetGamingDeviceModelInformation(&info))) {
+         (void)SDL_snprintf(model, sizeof(model), "vendorId=0x%X deviceId=0x%X",
+                            (unsigned)info.vendorId, (unsigned)info.deviceId);
+     } else {
+@@ -183,6 +183,64 @@ static void WINRT_LogOutputResolutionOnce(void)
+     }
+ }
+ 
++#if defined(SDL_WINRT_HAVE_HDMI_DISPLAY_INFORMATION)
++// Local change (xemu on Xbox): move the console to the sharpest 60 Hz mode the TV in use offers, keeping its
++// colour settings. The console drops to 1080p by itself on a 1080p TV but does not go back up on a 4K one, and
++// a mode an app asks for lasts only while that app is on screen, so every start asks again.
++static void WINRT_RequestBestDisplayMode(void)
++{
++    using namespace Windows::Graphics::Display::Core;
++    try {
++        HdmiDisplayInformation ^ hdi = HdmiDisplayInformation::GetForCurrentView();
++        if (hdi == nullptr) {
++            return;
++        }
++        HdmiDisplayMode ^ cur = hdi->GetCurrentDisplayMode();
++        if (cur == nullptr) {
++            return;
++        }
++        const Uint64 curPixels = (Uint64)cur->ResolutionWidthInRawPixels * cur->ResolutionHeightInRawPixels;
++        HdmiDisplayMode ^ best = nullptr;
++        Uint64 bestScore = 0;
++        auto modes = hdi->GetSupportedDisplayModes();
++        for (unsigned int i = 0; i < modes->Size; ++i) {
++            HdmiDisplayMode ^ m = modes->GetAt(i);
++            if (m->StereoEnabled || m->RefreshRate < 59 || m->RefreshRate > 61) {
++                continue;
++            }
++            const Uint64 pixels = (Uint64)m->ResolutionWidthInRawPixels * m->ResolutionHeightInRawPixels;
++            if (pixels <= curPixels) {
++                continue;
++            }
++            const Uint64 score = pixels * 16 + (m->IsSmpte2084Supported == cur->IsSmpte2084Supported ? 8 : 0) +
++                                 (m->BitsPerPixel == cur->BitsPerPixel ? 4 : 0) + (m->ColorSpace == cur->ColorSpace ? 2 : 0) +
++                                 (m->PixelEncoding == cur->PixelEncoding ? 1 : 0);
++            if (score > bestScore) {
++                bestScore = score;
++                best = m;
++            }
++        }
++        if (best == nullptr) {
++            return;
++        }
++        auto op = hdi->RequestSetCurrentDisplayModeAsync(best);
++        CoreWindow ^ win = CoreWindow::GetForCurrentThread();
++        const Uint64 until = SDL_GetTicks() + 4000;
++        while (op->Status == Windows::Foundation::AsyncStatus::Started && SDL_GetTicks() < until) {
++            if (win != nullptr) {
++                win->Dispatcher->ProcessEvents(CoreProcessEventsOption::ProcessAllIfPresent);
++            }
++            SDL_Delay(10);
++        }
++        const bool done = (op->Status == Windows::Foundation::AsyncStatus::Completed) && op->GetResults();
++        SDL_Log("WinRT: display mode %ux%u -> %ux%u: %s", (unsigned)cur->ResolutionWidthInRawPixels,
++                (unsigned)cur->ResolutionHeightInRawPixels, (unsigned)best->ResolutionWidthInRawPixels,
++                (unsigned)best->ResolutionHeightInRawPixels, done ? "switched" : "not switched");
++    } catch (...) {
++    }
++}
++#endif
++
+ static void WINRT_ResolveOutputSize(void)
+ {
+     if (WINRT_OutputSizeResolved) {
+@@ -200,6 +258,12 @@ static void WINRT_ResolveOutputSize(void)
+     Uint32 display_h = 0;
+     WINRT_CachedDisplayModeQueryFailed = false;
+ 
++#if defined(SDL_WINRT_HAVE_HDMI_DISPLAY_INFORMATION)
++    if (is_xbox_family) {
++        WINRT_RequestBestDisplayMode();
++    }
++#endif
++
+ #if defined(SDL_WINRT_HAVE_HDMI_DISPLAY_INFORMATION)
+     try {
+         Windows::Graphics::Display::Core::HdmiDisplayInformation ^ hdi =

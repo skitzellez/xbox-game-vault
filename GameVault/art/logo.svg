@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Game Vault logo: a game cartridge with a vault door handle wheel. Copyright (c) 2026 Skitzelles -->
+  <path d="M24 10 H76 Q84 10 84 18 V74 H78 V90 H22 V74 H16 V18 Q16 10 24 10 Z" fill="none" stroke="#40BFFF" stroke-width="6" stroke-linejoin="round"/>
+  <g fill="#40BFFF">
+    <rect x="30" y="80" width="5" height="7" rx="1"/><rect x="39" y="80" width="5" height="7" rx="1"/><rect x="48" y="80" width="5" height="7" rx="1"/><rect x="57" y="80" width="5" height="7" rx="1"/><rect x="66" y="80" width="5" height="7" rx="1"/>
+  </g>
+  <circle cx="50" cy="44" r="19" fill="#16243A" stroke="#40BFFF" stroke-width="5"/>
+  <g stroke="#40BFFF" stroke-width="5.5" stroke-linecap="round">
+    <line x1="50" y1="44" x2="50" y2="18"/>
+    <line x1="50" y1="44" x2="72.5" y2="57"/>
+    <line x1="50" y1="44" x2="27.5" y2="57"/>
+  </g>
+  <circle cx="50" cy="44" r="6.5" fill="#40BFFF"/>
+</svg>

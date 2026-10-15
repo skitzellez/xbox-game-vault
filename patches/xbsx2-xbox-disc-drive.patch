@@ -1,0 +1,1056 @@
+diff --git a/.github/workflows/scripts/uwp/build-dependencies-uwp.bat b/.github/workflows/scripts/uwp/build-dependencies-uwp.bat
+index f1efb92..e827e14 100644
+--- a/.github/workflows/scripts/uwp/build-dependencies-uwp.bat
++++ b/.github/workflows/scripts/uwp/build-dependencies-uwp.bat
+@@ -4,12 +4,12 @@ setlocal enabledelayedexpansion
+ echo Setting environment...
+ rem Favor VS2022 over VS2026 for now.
+ if exist "%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" (
+-  for /f "usebackq tokens=*" %%i in (`call "%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -version "[17, 18)" -latest -property installationPath`) do set "VSINSTPATH=%%i"
++  for /f "usebackq tokens=*" %%i in (`call "%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -products * -version "[17, 18)" -latest -property installationPath`) do set "VSINSTPATH=%%i"
+   if defined VSINSTPATH (
+     echo VSINSTPATH=!VSINSTPATH!
+     call "!VSINSTPATH!\VC\Auxiliary\Build\vcvarsall.bat" x64 uwp || goto error
+   ) else (
+-    for /f "usebackq tokens=*" %%i in (`call "%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -version "[18, 19)" -latest -property installationPath`) do set "VSINSTPATH=%%i"
++    for /f "usebackq tokens=*" %%i in (`call "%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -products * -version "[18, 19)" -latest -property installationPath`) do set "VSINSTPATH=%%i"
+     if defined VSINSTPATH (
+       echo VSINSTPATH=!VSINSTPATH!
+       call "!VSINSTPATH!\VC\Auxiliary\Build\vcvarsall.bat" x64 uwp || goto error
+diff --git a/build_gv.bat b/build_gv.bat
+new file mode 100644
+index 0000000..77230e5
+--- /dev/null
++++ b/build_gv.bat
+@@ -0,0 +1,7 @@
++@echo off
++rem Copyright (c) 2026 Skitzelles - part of Game Vault, https://github.com/skitzellez/xbox-game-vault
++rem Builds the Xbox (UWP) package of this XBSX2 tree with the Visual Studio 2022 Build Tools.
++call "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat" >nul 2>nul
++cd /d "%~dp0"
++msbuild PCSX2_qt.sln /m /v:m /nologo /p:PlatformToolset=v143 /p:Configuration="Release AVX2" /p:Platform=x64 /t:restore /p:RestorePackagesConfig=true || exit /b 1
++msbuild PCSX2_qt.sln /m /v:m /nologo /p:PlatformToolset=v143 /p:Configuration="Release AVX2" /p:Platform=x64 /t:pcsx2-uwp %*
+diff --git a/pcsx2-uwp/Package.appxmanifest b/pcsx2-uwp/Package.appxmanifest
+index 2755ecf..da816f7 100644
+--- a/pcsx2-uwp/Package.appxmanifest
++++ b/pcsx2-uwp/Package.appxmanifest
+@@ -6,13 +6,13 @@
+   IgnorableNamespaces="uap rescap">
+ 
+ 	<Identity
+-	  Name="595c25f0-b370-4d7a-9b14-3027fbd69ecf"
+-	  Publisher="CN=SternXD"
+-	  Version="2.0.9.1" />
++	  Name="GamerDad.XBSX2ForGameVault"
++	  Publisher="CN=GamerDad"
++	  Version="2.0.9.6" />
+ 
+ 	<Properties>
+-		<DisplayName>XBSX2</DisplayName>
+-		<PublisherDisplayName>SternXD</PublisherDisplayName>
++		<DisplayName>XBSX2 for Game Vault</DisplayName>
++		<PublisherDisplayName>GamerDad</PublisherDisplayName>
+ 		<Logo>Assets\StoreLogo.png</Logo>
+ 	</Properties>
+ 
+@@ -34,8 +34,8 @@
+ 		  EntryPoint="pcsx2_uwp.App">
+ 
+ 			<uap:VisualElements
+-			  DisplayName="XBSX2"
+-			  Description="XBSX2 UWP/WinRT - The PlayStation 2 Emulator for Xbox Series/Xbox One"
++			  DisplayName="XBSX2 for Game Vault"
++			  Description="XBSX2 (PlayStation 2 emulator by SternXD, based on PCSX2) built for Game Vault: plays from any USB drive and from the console's disc drive"
+ 			  Square150x150Logo="Assets\Square150x150Logo.png"
+ 			  Square44x44Logo="Assets\Square44x44Logo.png"
+ 			  BackgroundColor="transparent">
+@@ -48,7 +48,8 @@
+ 
+ 			<Extensions>
+ 				<uap:Extension Category="windows.protocol">
+-					<uap:Protocol Name="xbsx2" />
++					<!-- its own link name, so it never competes with the original XBSX2 for "xbsx2:" -->
++					<uap:Protocol Name="gamevault-xbsx2" />
+ 				</uap:Extension>
+ 			</Extensions>
+ 
+@@ -64,6 +65,8 @@
+ 		<rescap:Capability Name="runFullTrust" />
+ 		<rescap:Capability Name="broadFileSystemAccess" />
+ 		<rescap:Capability Name="expandedResources" />
++		<DeviceCapability Name="optical" />
++		<DeviceCapability Name="53f56308-b6bf-11d0-94f2-00a0c91efb8b" />
+ 	</Capabilities>
+ 
+ </Package>
+diff --git a/pcsx2-uwp/pcsx2-uwp.vcxproj b/pcsx2-uwp/pcsx2-uwp.vcxproj
+index fc4b707..073d4f1 100644
+--- a/pcsx2-uwp/pcsx2-uwp.vcxproj
++++ b/pcsx2-uwp/pcsx2-uwp.vcxproj
+@@ -166,6 +166,7 @@
+     <ClCompile Include="src\main.cpp" />
+     <ClCompile Include="src\UWPKeyboard.cpp" />
+     <ClCompile Include="src\UWPSound.cpp" />
++    <ClCompile Include="src\UWPFileRedirect.cpp" />
+   </ItemGroup>
+   <ItemGroup>
+     <None Include="packages.config" />
+diff --git a/pcsx2-uwp/src/UWPFileRedirect.cpp b/pcsx2-uwp/src/UWPFileRedirect.cpp
+new file mode 100644
+index 0000000..464f3e2
+--- /dev/null
++++ b/pcsx2-uwp/src/UWPFileRedirect.cpp
+@@ -0,0 +1,329 @@
++/* Copyright (c) 2026 Skitzelles - part of Game Vault, https://github.com/skitzellez/xbox-game-vault
++ * GPL-3.0-or-later, like PCSX2 / XBSX2.
++ *
++ * PCSX2 opens disc images, memory cards and states with the C library (fopen and friends), which ends in CreateFileW.
++ * In a UWP app that direct call only works where the app container itself has rights: on an NTFS drive
++ * that was given "ALL APPLICATION PACKAGES" access. On a FAT32 or exFAT stick, or an NTFS one that was
++ * not prepared, it fails with "access denied" although the user allowed file system access
++ * (broadFileSystemAccess): that permission is honoured only by the *FromApp functions, which go through
++ * the file broker when the direct call is refused and are otherwise the same call.
++ *
++ * So the import tables of the C runtime and of XBSX2 itself are pointed at the FromApp
++ * versions. They take the same arguments, and where the direct call is allowed they behave exactly as
++ * before. Then any USB drive works, as it already did for Game Vault and xemu.
++ */
++#include <windows.h>
++#include <fileapifromapp.h>
++#include <memoryapi.h>
++#include <stdlib.h>
++#include <string.h>
++#include <stdio.h>
++#include <string>
++#include <winrt/Windows.Storage.h>
++
++static void log_redirect(const char *, unsigned) {}
++
++namespace {
++
++/* "\\?\F:\..." (the long-path form some cores use) is refused by the broker; the plain path works */
++static LPCWSTR Plain(LPCWSTR name)
++{
++   if (name && name[0] == L'\\' && name[1] == L'\\' && name[2] == L'?' && name[3] == L'\\' && name[4] &&
++         name[5] == L':')
++      return name + 4;
++   return name;
++}
++
++DWORD WINAPI GetFileAttributesW_FromApp(LPCWSTR name)
++{
++   WIN32_FILE_ATTRIBUTE_DATA data;
++   if (!GetFileAttributesExFromAppW(Plain(name), GetFileExInfoStandard, &data))
++      return INVALID_FILE_ATTRIBUTES;
++   return data.dwFileAttributes;
++}
++
++wchar_t *Widen(LPCSTR s)
++{
++   if (!s)
++      return NULL;
++   int n = MultiByteToWideChar(CP_ACP, 0, s, -1, NULL, 0);
++   wchar_t *w = (wchar_t*)malloc(n * sizeof(wchar_t));
++   if (w)
++      MultiByteToWideChar(CP_ACP, 0, s, -1, w, n);
++   return w;
++}
++
++/* CreateFileFromAppW, and when the file broker refuses the call's extras (FAT32 / exFAT sticks are opened
++ * through the broker, which answers ERROR_INVALID_PARAMETER for an inheritable handle and for some flags; the
++ * C runtime passes both, and fopen then fails with errno 22) the same open again without them. */
++/* The first failed opens, with path and error, go to LocalState\uwp_redirect.log (for bug reports). */
++static void Note(LPCWSTR what, LPCWSTR name, DWORD err)
++{
++   static LONG told;
++   static wchar_t logPath[MAX_PATH + 64];
++   if (!name || InterlockedIncrement(&told) > 50)
++      return;
++   if (!logPath[0])
++   {
++      try
++      {
++         std::wstring dir(winrt::Windows::Storage::ApplicationData::Current().LocalFolder().Path());
++         wcsncpy_s(logPath, (dir + L"\\uwp_redirect.log").c_str(), _TRUNCATE);
++      }
++      catch (...)
++      {
++         return;
++      }
++   }
++   HANDLE f = CreateFile2FromAppW(logPath, FILE_APPEND_DATA, FILE_SHARE_READ, OPEN_ALWAYS, NULL);
++   if (f == INVALID_HANDLE_VALUE)
++      return;
++   char line[1200];
++   int len = snprintf(line, sizeof(line), "%ls failed (error %lu): %ls\r\n", what, err, name);
++   DWORD wrote;
++   if (len > 0)
++      WriteFile(f, line, (DWORD)len, &wrote, NULL);
++   CloseHandle(f);
++}
++
++static HANDLE CreateFileW_FromApp_Try(LPCWSTR name, DWORD access, DWORD share, LPSECURITY_ATTRIBUTES sa,
++      DWORD disposition, DWORD flags, HANDLE templ);
++
++HANDLE WINAPI CreateFileW_FromApp(LPCWSTR name, DWORD access, DWORD share, LPSECURITY_ATTRIBUTES sa,
++      DWORD disposition, DWORD flags, HANDLE templ)
++{
++   name     = Plain(name);
++   HANDLE h = CreateFileW_FromApp_Try(name, access, share, sa, disposition, flags, templ);
++   if (h == INVALID_HANDLE_VALUE)
++   {
++      DWORD err = GetLastError();
++      wchar_t what[160];
++      swprintf_s(what, L"CreateFileW access %08lx share %lx disposition %lu flags %08lx sa %d", access, share,
++            disposition, flags, sa ? 1 : 0);
++      Note(what, name, err);
++      SetLastError(err);
++   }
++   return h;
++}
++
++static HANDLE CreateFileW_FromApp_Try(LPCWSTR name, DWORD access, DWORD share, LPSECURITY_ATTRIBUTES sa,
++      DWORD disposition, DWORD flags, HANDLE templ)
++{
++   HANDLE h = CreateFileFromAppW(name, access, share, sa, disposition, flags, templ);
++   if (h != INVALID_HANDLE_VALUE)
++      return h;
++   /* the broker refuses security attributes (an inheritable handle) with error 4252 or 87: try without */
++   if (sa)
++   {
++      h = CreateFileFromAppW(name, access, share, NULL, disposition, flags, templ);
++      if (h != INVALID_HANDLE_VALUE)
++         return h;
++   }
++   if (GetLastError() != ERROR_INVALID_PARAMETER)
++      return h;
++   h = CreateFileFromAppW(name, access, share, NULL, disposition, flags, templ);
++   if (h != INVALID_HANDLE_VALUE || GetLastError() != ERROR_INVALID_PARAMETER)
++      return h;
++   /* attributes and the access-pattern hints only */
++   DWORD plain = flags & (0xFFFF | FILE_FLAG_SEQUENTIAL_SCAN | FILE_FLAG_RANDOM_ACCESS | FILE_FLAG_BACKUP_SEMANTICS);
++   return CreateFileFromAppW(name, access, share, NULL, disposition, plain, NULL);
++}
++
++HANDLE WINAPI CreateFile2_FromApp(LPCWSTR name, DWORD access, DWORD share, DWORD disposition,
++      LPCREATEFILE2_EXTENDED_PARAMETERS ext)
++{
++   name     = Plain(name);
++   HANDLE h = CreateFile2FromAppW(name, access, share, disposition, ext);
++   if (h == INVALID_HANDLE_VALUE && ext && ext->lpSecurityAttributes)
++   {
++      /* the broker refuses security attributes: try without them */
++      CREATEFILE2_EXTENDED_PARAMETERS nosa = *ext;
++      nosa.lpSecurityAttributes = NULL;
++      h = CreateFile2FromAppW(name, access, share, disposition, &nosa);
++   }
++   if (h != INVALID_HANDLE_VALUE || GetLastError() != ERROR_INVALID_PARAMETER || !ext)
++   {
++      if (h == INVALID_HANDLE_VALUE)
++      {
++         DWORD err = GetLastError();
++         Note(L"CreateFile2", name, err);
++         SetLastError(err);
++      }
++      return h;
++   }
++   CREATEFILE2_EXTENDED_PARAMETERS plain = *ext;
++   plain.lpSecurityAttributes = NULL;
++   plain.hTemplateFile        = NULL;
++   plain.dwSecurityQosFlags   = 0;
++   plain.dwFileFlags         &= FILE_FLAG_SEQUENTIAL_SCAN | FILE_FLAG_RANDOM_ACCESS | FILE_FLAG_BACKUP_SEMANTICS;
++   return CreateFile2FromAppW(name, access, share, disposition, &plain);
++}
++
++HANDLE WINAPI CreateFileA_FromApp(LPCSTR name, DWORD access, DWORD share, LPSECURITY_ATTRIBUTES sa,
++      DWORD disposition, DWORD flags, HANDLE templ)
++{
++   wchar_t *w = Widen(name);
++   HANDLE h   = CreateFileW_FromApp(w, access, share, sa, disposition, flags, templ);
++   DWORD err  = GetLastError();
++   free(w);
++   SetLastError(err);
++   return h;
++}
++
++DWORD WINAPI GetFileAttributesA_FromApp(LPCSTR name)
++{
++   wchar_t *w = Widen(name);
++   DWORD a    = GetFileAttributesW_FromApp(w);
++   DWORD err  = GetLastError();
++   free(w);
++   SetLastError(err);
++   return a;
++}
++
++BOOL WINAPI GetFileAttributesExW_FromApp(LPCWSTR name, GET_FILEEX_INFO_LEVELS level, LPVOID info)
++{
++   return GetFileAttributesExFromAppW(Plain(name), level, info);
++}
++
++HANDLE WINAPI FindFirstFileExW_FromApp(LPCWSTR name, FINDEX_INFO_LEVELS level, LPVOID data,
++      FINDEX_SEARCH_OPS op, LPVOID filter, DWORD flags)
++{
++   return FindFirstFileExFromAppW(Plain(name), level, data, op, filter, flags);
++}
++
++HANDLE WINAPI FindFirstFileW_FromApp(LPCWSTR name, LPWIN32_FIND_DATAW data)
++{
++   return FindFirstFileExFromAppW(Plain(name), FindExInfoStandard, data, FindExSearchNameMatch, NULL, 0);
++}
++
++BOOL WINAPI SetFileAttributesW_FromApp(LPCWSTR name, DWORD attributes)
++{
++   return SetFileAttributesFromAppW(Plain(name), attributes);
++}
++
++/* Saving through a temporary file and renaming it over the old one (save files, states, memory cards, the
++ * settings). MoveFileFromAppW never replaces, so an existing target is replaced with ReplaceFileFromAppW, or
++ * deleted first when that is refused; another drive means copy and delete, as MOVEFILE_COPY_ALLOWED asks. */
++BOOL WINAPI MoveFileExW_FromApp(LPCWSTR from, LPCWSTR to, DWORD flags)
++{
++   from = Plain(from);
++   to   = Plain(to);
++   if (!to)
++      return DeleteFileFromAppW(from);
++   if (MoveFileFromAppW(from, to))
++      return TRUE;
++   DWORD err = GetLastError();
++   if ((flags & MOVEFILE_REPLACE_EXISTING) && (err == ERROR_ALREADY_EXISTS || err == ERROR_FILE_EXISTS))
++   {
++      if (ReplaceFileFromAppW(to, from, NULL, REPLACEFILE_IGNORE_MERGE_ERRORS, NULL, NULL))
++         return TRUE;
++      if (DeleteFileFromAppW(to) && MoveFileFromAppW(from, to))
++         return TRUE;
++      err = GetLastError();
++   }
++   else if ((flags & MOVEFILE_COPY_ALLOWED) && err == ERROR_NOT_SAME_DEVICE)
++   {
++      if (CopyFileFromAppW(from, to, !(flags & MOVEFILE_REPLACE_EXISTING)) && DeleteFileFromAppW(from))
++         return TRUE;
++      err = GetLastError();
++   }
++   SetLastError(err);
++   return FALSE;
++}
++
++BOOL WINAPI MoveFileW_FromApp(LPCWSTR from, LPCWSTR to)
++{
++   return MoveFileExW_FromApp(from, to, MOVEFILE_COPY_ALLOWED);
++}
++
++BOOL WINAPI ReplaceFileW_FromApp(LPCWSTR replaced, LPCWSTR replacement, LPCWSTR backup, DWORD flags,
++      LPVOID exclude, LPVOID reserved)
++{
++   return ReplaceFileFromAppW(Plain(replaced), Plain(replacement), Plain(backup), flags, exclude, reserved);
++}
++
++struct Redirect
++{
++   const char *name;
++   void *to;
++};
++
++const Redirect kRedirects[] = {
++   { "CreateFileW",          (void*)CreateFileW_FromApp },
++   { "CreateFile2",          (void*)CreateFile2_FromApp },
++   { "CreateFileA",          (void*)CreateFileA_FromApp },
++   { "GetFileAttributesExW", (void*)GetFileAttributesExW_FromApp },
++   { "GetFileAttributesW",   (void*)GetFileAttributesW_FromApp },
++   { "GetFileAttributesA",   (void*)GetFileAttributesA_FromApp },
++   { "FindFirstFileExW",     (void*)FindFirstFileExW_FromApp },
++   { "FindFirstFileW",       (void*)FindFirstFileW_FromApp },
++   { "CreateDirectoryW",     (void*)CreateDirectoryFromAppW },
++   { "DeleteFileW",          (void*)DeleteFileFromAppW },
++   { "RemoveDirectoryW",     (void*)RemoveDirectoryFromAppW },
++   { "SetFileAttributesW",   (void*)SetFileAttributesW_FromApp },
++   { "MoveFileExW",          (void*)MoveFileExW_FromApp },
++   { "MoveFileW",            (void*)MoveFileW_FromApp },
++   { "ReplaceFileW",         (void*)ReplaceFileW_FromApp },
++};
++
++} // namespace
++
++/* Points the module's imports of the functions above at the FromApp versions. Returns how many. */
++extern "C" unsigned uwp_redirect_file_apis(void *module)
++{
++   unsigned count = 0;
++   BYTE *base     = (BYTE*)module;
++   if (!base)
++      return 0;
++   IMAGE_DOS_HEADER *dos = (IMAGE_DOS_HEADER*)base;
++   if (dos->e_magic != IMAGE_DOS_SIGNATURE)
++      return 0;
++   IMAGE_NT_HEADERS *nt = (IMAGE_NT_HEADERS*)(base + dos->e_lfanew);
++   IMAGE_DATA_DIRECTORY dir = nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT];
++   if (!dir.VirtualAddress)
++      return 0;
++   for (IMAGE_IMPORT_DESCRIPTOR *imp = (IMAGE_IMPORT_DESCRIPTOR*)(base + dir.VirtualAddress);
++         imp->Name; imp++)
++   {
++      IMAGE_THUNK_DATA *thunk = (IMAGE_THUNK_DATA*)(base + imp->FirstThunk);
++      IMAGE_THUNK_DATA *names = (IMAGE_THUNK_DATA*)(base +
++            (imp->OriginalFirstThunk ? imp->OriginalFirstThunk : imp->FirstThunk));
++      for (; names->u1.AddressOfData; names++, thunk++)
++      {
++         if (IMAGE_SNAP_BY_ORDINAL(names->u1.Ordinal))
++            continue;
++         const char *fn = (const char*)((IMAGE_IMPORT_BY_NAME*)(base + names->u1.AddressOfData))->Name;
++         for (const Redirect &r : kRedirects)
++         {
++            if (strcmp(fn, r.name) || thunk->u1.Function == (ULONG_PTR)r.to)
++               continue;
++            ULONG old;
++            if (VirtualProtectFromApp(&thunk->u1.Function, sizeof(thunk->u1.Function),
++                     PAGE_READWRITE, &old))
++            {
++               thunk->u1.Function = (ULONG_PTR)r.to;
++               VirtualProtectFromApp(&thunk->u1.Function, sizeof(thunk->u1.Function), old, &old);
++               count++;
++            }
++            break;
++         }
++      }
++   }
++   return count;
++}
++
++/* The C runtime and XBSX2 itself, once at start-up. */
++extern "C" void uwp_redirect_file_apis_startup(void)
++{
++   static const wchar_t *const modules[] = {
++      L"ucrtbase.dll", L"ucrtbased.dll", L"msvcrt.dll", NULL
++   };
++   unsigned n = uwp_redirect_file_apis(GetModuleHandleW(NULL));
++   for (int i = 0; modules[i]; i++)
++   {
++      HMODULE m = GetModuleHandleW(modules[i]);
++      if (m)
++         n += uwp_redirect_file_apis(m);
++   }
++   log_redirect("C runtime and XBSX2", n);
++}
+diff --git a/pcsx2-uwp/src/main.cpp b/pcsx2-uwp/src/main.cpp
+index 82f2d80..4de1f56 100644
+--- a/pcsx2-uwp/src/main.cpp
++++ b/pcsx2-uwp/src/main.cpp
+@@ -22,6 +22,7 @@
+ #include "common/CrashHandler.h"
+ #include "common/Error.h"
+ #include "common/FileSystem.h"
++#include "common/Console.h"
+ #include "common/Path.h"
+ 
+ #include "pcsx2/CDVD/CDVDcommon.h"
+@@ -785,6 +786,79 @@ void WinRTHost::IdleEventLoop()
+ 	}
+ }
+ 
++// Game Vault keeps BIOS files, memory cards and states on the games USB drive, in "<drive>\Game Vault", and
++// sends that folder as "home" with every game. The first time, what XBSX2 had in its own storage is moved
++// there (a file already on the drive is left alone). A game started without "home" uses XBSX2's own folders
++// again, so a stick that is no longer plugged in is never looked for.
++static const char* const s_home_folders[][2] = {
++	{"Bios", "bios"}, {"MemoryCards", "memory cards"}, {"Savestates", "states"}};
++static const char* const s_own_folders[] = {"bios", "memcards", "sstates"};
++
++static void MoveFolderToHome(const std::string& from, const std::string& to)
++{
++	FileSystem::FindResultsArray files;
++	if (!FileSystem::FindFiles(from.c_str(), "*", FILESYSTEM_FIND_FILES | FILESYSTEM_FIND_RECURSIVE | FILESYSTEM_FIND_RELATIVE_PATHS, &files))
++		return;
++	for (const FILESYSTEM_FIND_DATA& fd : files)
++	{
++		const std::string src = Path::Combine(from, fd.FileName), dst = Path::Combine(to, fd.FileName);
++		if (FileSystem::FileExists(dst.c_str()))
++			continue;
++		FileSystem::CreateDirectoryPath(std::string(Path::GetDirectory(dst)).c_str(), true);
++		if (FileSystem::CopyFilePath(src.c_str(), dst.c_str(), false))
++		{
++			FileSystem::DeleteFilePath(src.c_str());
++			Console.WriteLn("Game Vault: moved %s to %s", src.c_str(), dst.c_str());
++		}
++		else
++		{
++			Console.Error("Game Vault: could not move %s to %s", src.c_str(), dst.c_str());
++		}
++	}
++}
++
++static void UseGameVaultHome(const std::string& home, bool fps)
++{
++	{
++		auto lock = Host::GetSettingsLock();
++		SettingsInterface* si = Host::Internal::GetBaseSettingsLayer();
++		// The frame-rate display: Game Vault sends "fps=1" while it is on. Turned off again
++		// only when Game Vault turned it on, so a choice made in XBSX2's own settings is left alone.
++		const bool ours = si->GetBoolValue("GameVault", "FpsOn", false);
++		if (fps || ours)
++		{
++			si->SetBoolValue("EmuCore/GS", "OsdShowFPS", fps);
++			si->SetBoolValue("GameVault", "FpsOn", fps);
++		}
++		for (size_t i = 0; i < std::size(s_home_folders); i++)
++		{
++			const std::string current = si->GetStringValue("Folders", s_home_folders[i][0], s_own_folders[i]);
++			if (home.empty())
++			{
++				if (current.find("\\Game Vault\\") != std::string::npos)
++					si->SetStringValue("Folders", s_home_folders[i][0], s_own_folders[i]);
++				continue;
++			}
++			const std::string want = Path::Combine(home, s_home_folders[i][1]);
++			FileSystem::CreateDirectoryPath(want.c_str(), true);
++			// only XBSX2's own storage is emptied, never another drive's Game Vault folder
++			const std::string own = Path::IsAbsolute(current) ? current : Path::Combine(EmuFolders::DataRoot, current);
++			if (_strnicmp(own.c_str(), EmuFolders::DataRoot.c_str(), EmuFolders::DataRoot.size()) == 0)
++				MoveFolderToHome(own, want);
++			si->SetStringValue("Folders", s_home_folders[i][0], want.c_str());
++		}
++	}
++	Host::CommitBaseSettingChanges();
++	VMManager::Internal::UpdateEmuFolders();
++	// the log of each session goes to the drive too, where a player can pick it up for a problem report
++	if (!home.empty())
++	{
++		const std::string logs = Path::Combine(home, "logs");
++		FileSystem::CreateDirectoryPath(logs.c_str(), true);
++		Log::SetFileOutputLevel(LOGLEVEL_INFO, Path::Combine(logs, "PS2 (XBSX2) - last session.txt"));
++	}
++}
++
+ struct App : implements<App, IFrameworkViewSource, IFrameworkView>
+ {
+ 	std::thread m_cpu_thread;
+@@ -834,6 +908,8 @@ struct App : implements<App, IFrameworkViewSource, IFrameworkView>
+ 		const winrt::Windows::ApplicationModel::Activation::IActivatedEventArgs& args)
+ 	{
+ 		std::stringstream filePath;
++		std::string home;
++		bool fps = false;
+ 
+ 		if (args.Kind() == Windows::ApplicationModel::Activation::ActivationKind::Protocol)
+ 		{
+@@ -865,6 +941,15 @@ struct App : implements<App, IFrameworkViewSource, IFrameworkView>
+ 						filePath << s;
+ 					}
+ 				}
++				else if (arg.Name() == winrt::hstring(L"home"))
++				{
++					// Game Vault's folder on the games drive (see UseGameVaultHome)
++					home = winrt::to_string(arg.Value());
++				}
++				else if (arg.Name() == winrt::hstring(L"fps"))
++				{
++					fps = arg.Value() == L"1";
++				}
+ 				else if (arg.Name() == winrt::hstring(L"launchOnExit"))
+ 				{
+ 					// For if we want to return to a frontend
+@@ -876,10 +961,17 @@ struct App : implements<App, IFrameworkViewSource, IFrameworkView>
+ 		std::string gamePath = filePath.str();
+ 		if (!gamePath.empty() && gamePath != "")
+ 		{
+-			WinRTHost::QueueCPUEvent([gamePath]() {
++			WinRTHost::QueueCPUEvent([gamePath, home, fps]() {
++				if (VMManager::HasValidVM())
++				{
++					return;
++				}
++				UseGameVaultHome(home, fps);
++
+ 				VMBootParameters params{};
+ 				params.filename = gamePath;
+-				params.source_type = CDVD_SourceType::Iso;
++				// "disc:" instead of a file: play the disc in the console's own drive
++				params.source_type = gamePath.rfind("disc:", 0) == 0 ? CDVD_SourceType::Disc : CDVD_SourceType::Iso;
+ 
+ 				if (VMManager::HasValidVM())
+ 				{
+@@ -1162,8 +1254,12 @@ struct App : implements<App, IFrameworkViewSource, IFrameworkView>
+ 	}
+ };
+ 
++extern "C" void uwp_redirect_file_apis_startup(void);
++
+ int __stdcall wWinMain(HINSTANCE, HINSTANCE, PWSTR, int)
+ {
++	// disc images on any USB drive (FAT32 / exFAT too): file calls go through the broker (UWPFileRedirect.cpp)
++	uwp_redirect_file_apis_startup();
+ 	SDL_SetMainReady();
+ 
+ 	winrt::init_apartment();
+diff --git a/pcsx2/CDVD/CDVDdiscReader.h b/pcsx2/CDVD/CDVDdiscReader.h
+index c9f00a6..19df779 100644
+--- a/pcsx2/CDVD/CDVDdiscReader.h
++++ b/pcsx2/CDVD/CDVDdiscReader.h
+@@ -39,6 +39,7 @@ class IOCtlSrc
+ #if defined(_WIN32)
+ 	HANDLE m_device = INVALID_HANDLE_VALUE;
+ 	mutable std::mutex m_lock;
++	void* m_xbox = nullptr; // Xbox (UWP) build: the console's drive, see Windows/IOCtlSrcXbox.inl
+ #else
+ 	int m_device = -1;
+ #endif
+diff --git a/pcsx2/CDVD/Windows/DriveUtility.cpp b/pcsx2/CDVD/Windows/DriveUtility.cpp
+index f5f8bd4..850eb41 100644
+--- a/pcsx2/CDVD/Windows/DriveUtility.cpp
++++ b/pcsx2/CDVD/Windows/DriveUtility.cpp
+@@ -5,6 +5,10 @@
+ 
+ std::vector<std::string> GetOpticalDriveList()
+ {
++#if defined(WINRT_XBOX)
++	// The console's own drive (Windows/IOCtlSrcXbox.inl); it is opened by its device interface, not by a letter.
++	return {"disc:"};
++#else
+ 	DWORD size = GetLogicalDriveStringsA(0, nullptr);
+ 	std::vector<char> drive_strings(size);
+ 	if (GetLogicalDriveStringsA(size, drive_strings.data()) != size - 1)
+@@ -19,10 +23,15 @@ std::vector<std::string> GetOpticalDriveList()
+ 			++p;
+ 	}
+ 	return drives;
++#endif
+ }
+ 
+ void GetValidDrive(std::string& drive)
+ {
++#if defined(WINRT_XBOX)
++	drive = "disc:";
++	return;
++#endif
+ 	if (drive.empty() || GetDriveTypeA(drive.c_str()) != DRIVE_CDROM)
+ 	{
+ 		auto drives = GetOpticalDriveList();
+diff --git a/pcsx2/CDVD/Windows/IOCtlSrc.cpp b/pcsx2/CDVD/Windows/IOCtlSrc.cpp
+index a215f12..598b7d6 100644
+--- a/pcsx2/CDVD/Windows/IOCtlSrc.cpp
++++ b/pcsx2/CDVD/Windows/IOCtlSrc.cpp
+@@ -23,6 +23,12 @@
+ 
+ #include "fmt/format.h"
+ 
++#if defined(WINRT_XBOX)
++
++#include "IOCtlSrcXbox.inl"
++
++#else
++
+ IOCtlSrc::IOCtlSrc(std::string filename)
+ 	: m_filename(std::move(filename))
+ {
+@@ -348,3 +354,5 @@ bool IOCtlSrc::DiscReady()
+ 
+ 	return !!m_sectors;
+ }
++
++#endif // WINRT_XBOX
+diff --git a/pcsx2/CDVD/Windows/IOCtlSrcXbox.inl b/pcsx2/CDVD/Windows/IOCtlSrcXbox.inl
+new file mode 100644
+index 0000000..55063fe
+--- /dev/null
++++ b/pcsx2/CDVD/Windows/IOCtlSrcXbox.inl
+@@ -0,0 +1,402 @@
++// Reading the disc in an Xbox console's own drive (Dev Mode, UWP).
++// Copyright (c) 2026 Skitzelles, https://github.com/skitzellez - written for Game Vault.
++// Free software under the GNU General Public License version 3 or later, like the rest of this program;
++// this notice stays in every copy.
++//
++// An app on the console is refused every file and volume route to the drive (CreateFile on \\.\X:, the
++// IOCTL_CDROM_* and IOCTL_DVD_* requests). What does open is the drive's device interface through
++// Windows.Devices.Custom, once the package declares the CD-ROM interface class
++// ({53f56308-b6bf-11d0-94f2-00a0c91efb8b}) as a DeviceCapability; opened for reading and writing it takes
++// IOCTL_SCSI_PASS_THROUGH, so everything here is plain SCSI / MMC commands: READ(10), READ CD, READ TOC,
++// READ DVD STRUCTURE, READ CAPACITY, TEST UNIT READY.
++//
++// Included by IOCtlSrc.cpp when WINRT_XBOX is set; it replaces the desktop implementation.
++
++#include <winrt/Windows.Devices.Custom.h>
++#include <winrt/Windows.Devices.Enumeration.h>
++#include <winrt/Windows.Foundation.Collections.h>
++#include <winrt/Windows.Foundation.h>
++#include <winrt/Windows.Storage.Streams.h>
++
++#include <algorithm>
++#include <cstring>
++
++namespace
++{
++	using namespace winrt::Windows::Devices::Custom;
++	using namespace winrt::Windows::Devices::Enumeration;
++	using winrt::Windows::Storage::Streams::Buffer;
++
++	constexpr u32 XBOX_SPT_HEADER = sizeof(SCSI_PASS_THROUGH) + 32; // the structure, then room for sense data
++	constexpr u32 XBOX_MAX_DATA = 64 * 1024;                        // one command moves at most this much
++
++	struct XboxDrive
++	{
++		CustomDevice device{nullptr};
++		IOControlCode code{0x04 /* IOCTL_SCSI_BASE */, 0x401, IOControlAccessMode::ReadWrite, IOControlBufferingMethod::Buffered};
++		Buffer in{XBOX_SPT_HEADER + XBOX_MAX_DATA};
++		Buffer out{XBOX_SPT_HEADER + XBOX_MAX_DATA};
++		bool is_cd = false;
++	};
++
++	// WinRT calls need the calling thread to be in an apartment; the emulator's own threads are not by default.
++	void XboxEnsureApartment()
++	{
++		static thread_local bool done = false;
++		if (done)
++			return;
++		done = true;
++		try
++		{
++			winrt::init_apartment();
++		}
++		catch (...)
++		{
++		}
++	}
++
++	XboxDrive* XboxOpenDrive(Error* error)
++	{
++		XboxEnsureApartment();
++		try
++		{
++			const auto found = DeviceInformation::FindAllAsync(
++				L"System.Devices.InterfaceClassGuid:=\"{53f56308-b6bf-11d0-94f2-00a0c91efb8b}\"").get();
++			if (found.Size() == 0)
++			{
++				Error::SetString(error, "This console has no disc drive.");
++				return nullptr;
++			}
++			auto drive = std::make_unique<XboxDrive>();
++			drive->device = CustomDevice::FromIdAsync(found.GetAt(0).Id(), DeviceAccessMode::ReadWrite, DeviceSharingMode::Shared).get();
++			if (!drive->device)
++			{
++				Error::SetString(error, "The disc drive did not open.");
++				return nullptr;
++			}
++			return drive.release();
++		}
++		catch (winrt::hresult_error const& e)
++		{
++			Error::SetString(error, fmt::format("The disc drive did not open (error {:08x}).", static_cast<u32>(e.code().value)));
++			return nullptr;
++		}
++	}
++
++	// Sends one command. data_len bytes are read from the drive into data (none when data is null).
++	// Returns the number of bytes that came back, or -1 when the drive refused the command.
++	s32 XboxScsi(XboxDrive* d, const u8* cdb, u8 cdb_len, u8* data, u32 data_len, u32 timeout_seconds = 20)
++	{
++		if (!d || !d->device || data_len > XBOX_MAX_DATA)
++			return -1;
++		XboxEnsureApartment();
++
++		SCSI_PASS_THROUGH spt{};
++		spt.Length = sizeof(SCSI_PASS_THROUGH);
++		spt.CdbLength = cdb_len;
++		spt.SenseInfoLength = 32;
++		spt.DataIn = data ? SCSI_IOCTL_DATA_IN : SCSI_IOCTL_DATA_UNSPECIFIED;
++		spt.DataTransferLength = data ? data_len : 0;
++		spt.TimeOutValue = timeout_seconds;
++		spt.DataBufferOffset = XBOX_SPT_HEADER;
++		spt.SenseInfoOffset = sizeof(SCSI_PASS_THROUGH);
++		std::memcpy(spt.Cdb, cdb, cdb_len);
++
++		u8* p = d->in.data();
++		std::memset(p, 0, XBOX_SPT_HEADER);
++		std::memcpy(p, &spt, sizeof(spt));
++		d->in.Length(XBOX_SPT_HEADER + spt.DataTransferLength);
++		try
++		{
++			const u32 n = d->device.SendIOControlAsync(d->code, d->in, d->out).get();
++			if (n < sizeof(SCSI_PASS_THROUGH))
++				return -1;
++			std::memcpy(&spt, d->out.data(), sizeof(spt));
++			if (spt.ScsiStatus != 0)
++				return -1;
++			if (!data)
++				return 0;
++			const u32 moved = std::min({static_cast<u32>(spt.DataTransferLength), data_len, n > XBOX_SPT_HEADER ? n - XBOX_SPT_HEADER : 0u});
++			std::memcpy(data, d->out.data() + XBOX_SPT_HEADER, moved);
++			return static_cast<s32>(moved);
++		}
++		catch (winrt::hresult_error const&)
++		{
++			return -1;
++		}
++	}
++
++	constexpr u32 Be32(const u8* p)
++	{
++		return (static_cast<u32>(p[0]) << 24) | (static_cast<u32>(p[1]) << 16) | (static_cast<u32>(p[2]) << 8) | p[3];
++	}
++
++	// READ CAPACITY: the number of 2048-byte sectors on the disc, 0 when there is none.
++	u32 XboxSectorCount(XboxDrive* d)
++	{
++		const u8 cdb[10] = {0x25};
++		u8 cap[8];
++		if (XboxScsi(d, cdb, 10, cap, 8) != 8)
++			return 0;
++		return Be32(cap) + 1;
++	}
++
++	bool XboxReadRaw(XboxDrive* d, u32 sector, u32 count, u8* buffer)
++	{
++		const u8 cdb[12] = {0xBE, 0, static_cast<u8>(sector >> 24), static_cast<u8>(sector >> 16), static_cast<u8>(sector >> 8),
++			static_cast<u8>(sector), 0, 0, static_cast<u8>(count), 0xF8, 0, 0}; // sync, headers, data, EDC/ECC
++		return XboxScsi(d, cdb, 12, buffer, count * 2352) == static_cast<s32>(count * 2352);
++	}
++} // namespace
++
++#define XBOX_DRIVE static_cast<XboxDrive*>(m_xbox)
++
++IOCtlSrc::IOCtlSrc(std::string filename)
++	: m_filename(std::move(filename))
++{
++}
++
++IOCtlSrc::~IOCtlSrc()
++{
++	delete XBOX_DRIVE;
++}
++
++bool IOCtlSrc::Reopen(Error* error)
++{
++	std::lock_guard<std::mutex> guard(m_lock);
++	delete XBOX_DRIVE;
++	m_xbox = XboxOpenDrive(error);
++	if (!m_xbox)
++		return false;
++
++	m_sectors = 0;
++	m_layer_break = 0;
++	m_media_type = 0;
++	m_toc.clear();
++
++	// A CD answers READ CD; a DVD refuses it at once.
++	u8 probe[2352];
++	XBOX_DRIVE->is_cd = XboxReadRaw(XBOX_DRIVE, 16, 1, probe);
++	if (!(XBOX_DRIVE->is_cd ? ReadCDInfo() : ReadDVDInfo()))
++		Console.Warning("CDVD: no readable disc in the console's drive");
++	else
++		Console.WriteLn(fmt::format("CDVD: disc in the console's drive: {}, {} sectors, layer break {}",
++			m_media_type < 0 ? "CD" : m_media_type == 0 ? "DVD" : "DVD, two layers", m_sectors, m_layer_break));
++	return true;
++}
++
++void IOCtlSrc::SetSpindleSpeed(bool restore_defaults) const
++{
++	// The console's drive refuses SET CD SPEED and SET STREAMING; it picks its own speed.
++}
++
++u32 IOCtlSrc::GetSectorCount() const
++{
++	return m_sectors;
++}
++
++u32 IOCtlSrc::GetLayerBreakAddress() const
++{
++	return m_layer_break;
++}
++
++s32 IOCtlSrc::GetMediaType() const
++{
++	return m_media_type;
++}
++
++const std::vector<toc_entry>& IOCtlSrc::ReadTOC() const
++{
++	return m_toc;
++}
++
++bool IOCtlSrc::ReadSectors2048(u32 sector, u32 count, u8* buffer) const
++{
++	std::lock_guard<std::mutex> guard(m_lock);
++	if (!m_xbox)
++		return false;
++
++	if (XBOX_DRIVE->is_cd)
++	{
++		// A PlayStation CD has mode 2 sectors, which READ(10) refuses: read them raw and take the data out
++		// (after 16 bytes in a mode 1 sector, after 24 in mode 2).
++		u8 raw[2352];
++		for (u32 n = 0; n < count; n++)
++		{
++			if (!XboxReadRaw(XBOX_DRIVE, sector + n, 1, raw))
++			{
++				Console.Error(fmt::format(" * CDVD: reading CD sector {} failed", sector + n));
++				return false;
++			}
++			std::memcpy(buffer + 2048 * n, raw + (raw[15] == 2 ? 24 : 16), 2048);
++		}
++		return true;
++	}
++
++	constexpr u32 per_command = 31; // 62 KB
++	for (u32 done = 0; done < count;)
++	{
++		const u32 n = std::min(count - done, per_command);
++		const u32 lba = sector + done;
++		const u8 cdb[10] = {0x28, 0, static_cast<u8>(lba >> 24), static_cast<u8>(lba >> 16), static_cast<u8>(lba >> 8),
++			static_cast<u8>(lba), 0, static_cast<u8>(n >> 8), static_cast<u8>(n), 0};
++		s32 got = -1;
++		for (int attempt = 0; attempt < 3 && got != static_cast<s32>(n * 2048); attempt++)
++			got = XboxScsi(XBOX_DRIVE, cdb, 10, buffer + 2048 * done, n * 2048);
++		if (got != static_cast<s32>(n * 2048))
++		{
++			Console.Error(fmt::format(" * CDVD: reading sectors {}-{} failed", lba, lba + n - 1));
++			return false;
++		}
++		done += n;
++	}
++	return true;
++}
++
++bool IOCtlSrc::ReadSectors2352(u32 sector, u32 count, u8* buffer) const
++{
++	std::lock_guard<std::mutex> guard(m_lock);
++	if (!m_xbox)
++		return false;
++
++	// Several sectors in one command are quicker; a read that crosses into a track of another type fails,
++	// and then they are read one by one.
++	constexpr u32 per_command = 27; // 63.5 KB
++	for (u32 done = 0; done < count;)
++	{
++		const u32 n = std::min(count - done, per_command);
++		if (XboxReadRaw(XBOX_DRIVE, sector + done, n, buffer + 2352 * done))
++		{
++			done += n;
++			continue;
++		}
++		for (u32 i = 0; i < n; i++)
++		{
++			if (!XboxReadRaw(XBOX_DRIVE, sector + done + i, 1, buffer + 2352 * (done + i)))
++			{
++				Console.Error(fmt::format(" * CDVD: reading raw sector {} failed", sector + done + i));
++				return false;
++			}
++		}
++		done += n;
++	}
++	return true;
++}
++
++bool IOCtlSrc::ReadDVDInfo()
++{
++	// READ DVD STRUCTURE, format 0 (physical format information) of layer 0: a 4-byte header, then the
++	// layer descriptor.
++	u8 info[36] = {};
++	const u8 cdb[12] = {0xAD, 0, 0, 0, 0, 0, 0, 0x00, 0, sizeof(info), 0, 0};
++	if (XboxScsi(XBOX_DRIVE, cdb, 12, info, sizeof(info)) >= 20)
++	{
++		const u8* layer = info + 4;
++		const u32 layers = (layer[2] >> 5) & 3, track_path = (layer[2] >> 4) & 1;
++		const u32 start_sector = Be32(layer + 4), end_sector = Be32(layer + 8), end_sector_layer0 = Be32(layer + 12);
++		if (end_sector > start_sector)
++		{
++			if (layers == 0)
++			{
++				m_media_type = 0;
++				m_layer_break = 0;
++				m_sectors = end_sector - start_sector + 1;
++			}
++			else if (track_path == 0)
++			{
++				// Two layers, parallel track path: the second layer has its own descriptor
++				u8 info1[36] = {};
++				const u8 cdb1[12] = {0xAD, 0, 0, 0, 0, 0, 1, 0x00, 0, sizeof(info1), 0, 0};
++				if (XboxScsi(XBOX_DRIVE, cdb1, 12, info1, sizeof(info1)) < 20)
++					return false;
++				const u32 layer1_start_sector = Be32(info1 + 4 + 4), layer1_end_sector = Be32(info1 + 4 + 8);
++				m_media_type = 1;
++				m_layer_break = end_sector - start_sector;
++				m_sectors = end_sector - start_sector + 1 + layer1_end_sector - layer1_start_sector + 1;
++			}
++			else
++			{
++				// Two layers, opposite track path
++				m_media_type = 2;
++				m_layer_break = end_sector_layer0 - start_sector;
++				m_sectors = end_sector_layer0 - start_sector + 1 + end_sector - (~end_sector_layer0 & 0xFFFFFFU) + 1;
++			}
++			return true;
++		}
++	}
++
++	// The drive did not hand out the structure: go by the size it reports and take the disc as one layer.
++	m_sectors = XboxSectorCount(XBOX_DRIVE);
++	m_media_type = 0;
++	m_layer_break = 0;
++	if (m_sectors)
++		Console.Warning("CDVD: READ DVD STRUCTURE refused, taking the disc as a single-layer DVD");
++	return m_sectors != 0;
++}
++
++bool IOCtlSrc::ReadCDInfo()
++{
++	// READ TOC, format 0, addresses as sector numbers: a 4-byte header, then 8 bytes for every track.
++	u8 toc[804] = {};
++	const u8 cdb[10] = {0x43, 0, 0, 0, 0, 0, 0, static_cast<u8>(sizeof(toc) >> 8), static_cast<u8>(sizeof(toc) & 0xff), 0};
++	const s32 got = XboxScsi(XBOX_DRIVE, cdb, 10, toc, sizeof(toc));
++	if (got < 4)
++		return false;
++
++	m_toc.clear();
++	u32 lead_out = 0;
++	const s32 end = std::min<s32>(got, ((toc[0] << 8) | toc[1]) + 2);
++	for (s32 o = 4; o + 8 <= end; o += 8)
++	{
++		const u32 lba = Be32(toc + o + 4);
++		if (toc[o + 2] == 0xAA)
++		{
++			lead_out = lba; // the lead-out is not a track
++			continue;
++		}
++		m_toc.push_back({lba, toc[o + 2], static_cast<u8>(toc[o + 1] >> 4), static_cast<u8>(toc[o + 1] & 15)});
++	}
++
++	m_sectors = XboxSectorCount(XBOX_DRIVE);
++	if (!m_sectors)
++		m_sectors = lead_out;
++	m_media_type = -1;
++	return m_sectors != 0;
++}
++
++bool IOCtlSrc::ReadTrackSubQ(cdvdSubQ* subQ) const
++{
++	// The console's drive refuses subchannel requests. A data disc sits in its first track.
++	subQ->adr = 1;
++	subQ->trackNum = 1;
++	subQ->trackIndex = 1;
++	return true;
++}
++
++bool IOCtlSrc::DiscReady()
++{
++	bool ready;
++	{
++		std::lock_guard<std::mutex> guard(m_lock);
++		if (!m_xbox)
++			return false;
++		const u8 test_unit_ready[6] = {};
++		ready = XboxScsi(XBOX_DRIVE, test_unit_ready, 6, nullptr, 0) == 0;
++	}
++
++	if (ready)
++	{
++		if (!m_sectors)
++			Reopen(nullptr);
++	}
++	else
++	{
++		m_sectors = 0;
++		m_layer_break = 0;
++		m_media_type = 0;
++	}
++
++	return !!m_sectors;
++}
++
++#undef XBOX_DRIVE

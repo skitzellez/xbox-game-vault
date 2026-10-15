@@ -1,0 +1,1334 @@
+diff --git a/build_gv.bat b/build_gv.bat
+new file mode 100644
+index 0000000..e247079
+--- /dev/null
++++ b/build_gv.bat
+@@ -0,0 +1,10 @@
++@echo off
++rem Copyright (c) 2026 Skitzelles - part of Game Vault, https://github.com/skitzellez/xbox-game-vault
++rem Builds the Xbox (UWP) package of this RetroArch tree with the Visual Studio 2022 Build Tools.
++call "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat" >nul 2>nul
++cd /d "%~dp0pkg\msvc-uwp"
++rem Mesa 26.2.2 (XboxEmulationHub/mesa-uwp) instead of the older Mesa that came with the tree: the old one
++rem crashed when a core re-created its OpenGL context (ScummVM starting a game). dxil.dll stays.
++for %%f in (libgallium_wgl opengl32 libEGL libGLESv1_CM libGLESv2 z-1 spirv_to_dxil vulkan_dzn) do copy /y "%~dp0..\deps\mesa-26\x\bin\%%f.dll" "RetroArch-msvcUWP\MESA\x64\" >nul || exit /b 1
++msbuild RetroArch-msvcUWP.sln /m /v:m /nologo /p:PlatformToolset=v143 /p:Configuration=Release /p:Platform=x64 /t:restore /p:RestorePackagesConfig=true || exit /b 1
++msbuild RetroArch-msvcUWP.sln /m /v:m /nologo /p:PlatformToolset=v143 /p:Configuration=Release /p:Platform=x64 /p:AppxPackageSigningEnabled=true %*
+diff --git a/libretro-common/cdrom/cdrom.c b/libretro-common/cdrom/cdrom.c
+index 85e621e..5abac10 100644
+--- a/libretro-common/cdrom/cdrom.c
++++ b/libretro-common/cdrom/cdrom.c
+@@ -279,6 +279,14 @@ static void cdrom_print_sense_data(const unsigned char *s, size_t len)
+ #endif
+ 
+ #if defined(_WIN32) && !defined(_XBOX)
++#ifdef __WINRT__
++/* Xbox (UWP): the console's drive is reached through uwp/uwp_cdrom.cpp - Copyright (c) 2026 Skitzelles, for Game Vault */
++extern int uwp_cdrom_command(int dir, void *buf, size_t len, unsigned char *cmd, size_t cmd_len, unsigned char *sense, size_t sense_len);
++static int cdrom_send_command_win32(const libretro_vfs_implementation_file *stream, CDROM_CMD_Direction dir, void *buf, size_t len, unsigned char *cmd, size_t cmd_len, unsigned char *sense, size_t sense_len)
++{
++   return uwp_cdrom_command(dir == DIRECTION_IN ? 1 : dir == DIRECTION_OUT ? 2 : 0, buf, len, cmd, cmd_len, sense, sense_len);
++}
++#else
+ static int cdrom_send_command_win32(const libretro_vfs_implementation_file *stream, CDROM_CMD_Direction dir, void *buf, size_t len, unsigned char *cmd, size_t cmd_len, unsigned char *sense, size_t sense_len)
+ {
+    DWORD ioctl_bytes;
+@@ -353,6 +361,7 @@ static int cdrom_send_command_win32(const libretro_vfs_implementation_file *stre
+ 
+    return 0;
+ }
++#endif /* __WINRT__ */
+ #endif
+ 
+ #if defined(__linux__) && !defined(ANDROID)
+diff --git a/libretro-common/dynamic/dylib.c b/libretro-common/dynamic/dylib.c
+index 64f67b2..d391546 100644
+--- a/libretro-common/dynamic/dylib.c
++++ b/libretro-common/dynamic/dylib.c
+@@ -99,6 +99,13 @@ dylib_t dylib_load(const char *path)
+    path_wide = utf8_to_utf16_string_alloc(relative_path);
+    lib       = LoadPackagedLibrary(path_wide, 0);
+    free(path_wide);
++   {
++      /* cores open game files themselves: through the file broker, so any USB drive works
++       * (uwp/uwp_file_redirect.cpp) */
++      extern unsigned uwp_redirect_file_apis(void *module);
++      if (lib)
++         uwp_redirect_file_apis(lib);
++   }
+ #elif defined(LEGACY_WIN32_RUNTIME)
+    dylib_t lib        = NULL;
+ 
+diff --git a/libretro-common/vfs/vfs_implementation_cdrom.c b/libretro-common/vfs/vfs_implementation_cdrom.c
+index c347410..65850f8 100644
+--- a/libretro-common/vfs/vfs_implementation_cdrom.c
++++ b/libretro-common/vfs/vfs_implementation_cdrom.c
+@@ -293,6 +293,13 @@ void retro_vfs_file_open_cdrom(
+    printf("[CDROM] Open: Path %s URI %s\n", cdrom_path, path);
+    fflush(stdout);
+ #endif
++#ifdef __WINRT__
++   /* Xbox (UWP): the console's drive is reached through uwp/uwp_cdrom.cpp - Copyright (c) 2026 Skitzelles, for Game Vault */
++   {
++      extern int uwp_cdrom_available(void);
++      stream->fh = uwp_cdrom_available() ? (HANDLE)(size_t)0x4344 : INVALID_HANDLE_VALUE;
++   }
++#else
+    stream->fh = CreateFile(cdrom_path,
+          GENERIC_READ | GENERIC_WRITE,
+          FILE_SHARE_READ | FILE_SHARE_WRITE,
+@@ -300,6 +307,7 @@ void retro_vfs_file_open_cdrom(
+          OPEN_EXISTING,
+          FILE_ATTRIBUTE_NORMAL,
+          NULL);
++#endif
+ 
+    if (stream->fh == INVALID_HANDLE_VALUE)
+       return;
+@@ -432,8 +440,13 @@ int retro_vfs_file_close_cdrom(libretro_vfs_implementation_file *stream)
+ #endif
+ 
+ #if defined(_WIN32) && !defined(_XBOX)
++#ifdef __WINRT__
++   if (!stream->fh || stream->fh == INVALID_HANDLE_VALUE)
++      return -1;
++#else
+    if (!stream->fh || !CloseHandle(stream->fh))
+       return -1;
++#endif
+ #elif defined(__APPLE__)
+    if (!stream->iokit_mmc)
+       return -1;
+diff --git a/libretro-common/vfs/vfs_implementation_uwp.cpp b/libretro-common/vfs/vfs_implementation_uwp.cpp
+index 7b884e7..69946a3 100644
+--- a/libretro-common/vfs/vfs_implementation_uwp.cpp
++++ b/libretro-common/vfs/vfs_implementation_uwp.cpp
+@@ -54,6 +54,11 @@
+ #include "vfs_implementation_smb.h"
+ #endif
+ 
++#ifdef HAVE_CDROM
++/* Xbox (UWP): the console's drive is reached through uwp/uwp_cdrom.cpp - Copyright (c) 2026 Skitzelles, for Game Vault */
++#include <vfs/vfs_implementation_cdrom.h>
++#endif
++
+ namespace
+ {
+    /* UWP deals with paths containing / instead of
+@@ -81,6 +86,23 @@ int retro_vfs_file_close_impl(libretro_vfs_implementation_file* stream)
+     if (!stream)
+         return -1;
+ 
++#ifdef HAVE_CDROM
++    if (stream->scheme == VFS_SCHEME_CDROM)
++    {
++        retro_vfs_file_close_cdrom(stream);
++        if (stream->cdrom)
++        {
++            if (stream->cdrom->cue_buf)
++                free(stream->cdrom->cue_buf);
++            free(stream->cdrom);
++        }
++        if (stream->orig_path)
++            free(stream->orig_path);
++        free(stream);
++        return 0;
++    }
++#endif
++
+ #ifdef HAVE_SMBCLIENT
+     if (stream->scheme == VFS_SCHEME_SMB)
+         retro_vfs_file_close_smb(stream);
+@@ -104,6 +126,10 @@ int retro_vfs_file_close_impl(libretro_vfs_implementation_file* stream)
+ 
+ int retro_vfs_file_error_impl(libretro_vfs_implementation_file* stream)
+ {
++#ifdef HAVE_CDROM
++    if (stream->scheme == VFS_SCHEME_CDROM)
++        return retro_vfs_file_error_cdrom(stream);
++#endif
+ #ifdef HAVE_SMBCLIENT
+     if (stream->scheme == VFS_SCHEME_SMB)
+         return retro_vfs_file_error_smb(stream);
+@@ -133,6 +159,10 @@ int64_t retro_vfs_file_tell_impl(libretro_vfs_implementation_file* stream)
+ 
+     if ((stream->hints & RFILE_HINT_UNBUFFERED) == 0)
+     {
++#ifdef HAVE_CDROM
++        if (stream->scheme == VFS_SCHEME_CDROM)
++           return retro_vfs_file_tell_cdrom(stream);
++#endif
+ #ifdef HAVE_SMBCLIENT
+         if (stream->scheme == VFS_SCHEME_SMB)
+            return retro_vfs_file_tell_smb(stream);
+@@ -151,6 +181,10 @@ int64_t retro_vfs_file_seek_internal(
+ 
+     if ((stream->hints & RFILE_HINT_UNBUFFERED) == 0)
+     {
++#ifdef HAVE_CDROM
++        if (stream->scheme == VFS_SCHEME_CDROM)
++            return retro_vfs_file_seek_cdrom(stream, offset, whence);
++#endif
+ #ifdef HAVE_SMBCLIENT
+         if (stream->scheme == VFS_SCHEME_SMB)
+             return retro_vfs_file_seek_smb(stream, offset, whence);
+@@ -172,6 +206,10 @@ int64_t retro_vfs_file_read_impl(libretro_vfs_implementation_file* stream,
+     if (!stream)
+         return -1;
+ 
++#ifdef HAVE_CDROM
++    if (stream->scheme == VFS_SCHEME_CDROM)
++        return retro_vfs_file_read_cdrom(stream, s, len);
++#endif
+ #ifdef HAVE_SMBCLIENT
+     if (stream->scheme == VFS_SCHEME_SMB)
+         return retro_vfs_file_read_smb(stream, s, len);
+@@ -287,6 +325,38 @@ libretro_vfs_implementation_file* retro_vfs_file_open_impl(
+ #ifdef HAVE_SMBCLIENT
+     stream->smb_fh    = 0;
+ #endif
++#ifdef HAVE_CDROM
++    stream->cdrom     = NULL;
++    stream->map_handle = NULL;
++    if (path && !strncmp(path, "cdrom://", 8) && path[8] != '\0')
++    {
++        if (!(stream->cdrom = (vfs_cdrom_t*)calloc(1, sizeof(*stream->cdrom))))
++        {
++            free(stream);
++            return NULL;
++        }
++        /* A core that takes the track's name in the cue sheet for a relative one hands back
++         * "cdrom://d:/cdrom://d:/drive-track01.bin": the last "cdrom://" is where the name starts. */
++        for (const char *again; (again = strstr(path + 8, "cdrom://")) != NULL;)
++            path = again;
++        stream->scheme    = VFS_SCHEME_CDROM;
++        stream->orig_path = strdup(path);
++        retro_vfs_file_open_cdrom(stream, path + 8, mode, hints);
++        if (!stream->fh || stream->fh == INVALID_HANDLE_VALUE)
++        {
++            if (stream->cdrom->cue_buf)
++                free(stream->cdrom->cue_buf);
++            free(stream->cdrom);
++            free(stream->orig_path);
++            free(stream);
++            return NULL;
++        }
++        retro_vfs_file_seek_cdrom(stream, 0, SEEK_END);
++        stream->size = retro_vfs_file_tell_cdrom(stream);
++        retro_vfs_file_seek_cdrom(stream, 0, SEEK_SET);
++        return stream;
++    }
++#endif
+ 
+ #ifdef VFS_FRONTEND
+    if (     path
+diff --git a/pkg/msvc-uwp/RetroArch-msvcUWP/Package.appxmanifest b/pkg/msvc-uwp/RetroArch-msvcUWP/Package.appxmanifest
+index 645a7cf..7f0836c 100644
+--- a/pkg/msvc-uwp/RetroArch-msvcUWP/Package.appxmanifest
++++ b/pkg/msvc-uwp/RetroArch-msvcUWP/Package.appxmanifest
+@@ -1,10 +1,10 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ <Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest" xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10" xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities" IgnorableNamespaces="uap mp rescap">
+-  <Identity Name="1e4cf179-f3c2-404f-b9f3-cb2070a5aad8" Publisher="CN=libretro" Version="1.22.2.0" />
+-  <mp:PhoneIdentity PhoneProductId="1e4cf179-f3c2-404f-b9f3-cb2070a5aad8" PhonePublisherId="00000000-0000-0000-0000-000000000000" />
++  <Identity Name="GamerDad.RetroArchForGameVault" Publisher="CN=GamerDad" Version="1.22.2.18" />
++  <mp:PhoneIdentity PhoneProductId="6a3f2c1e-9b4d-4e7a-8c15-2f0d7b9e4a61" PhonePublisherId="00000000-0000-0000-0000-000000000000" />
+   <Properties>
+-    <DisplayName>RetroArch</DisplayName>
+-    <PublisherDisplayName>libretro</PublisherDisplayName>
++    <DisplayName>RetroArch for Game Vault</DisplayName>
++    <PublisherDisplayName>GamerDad</PublisherDisplayName>
+     <Logo>Assets\StoreLogo.png</Logo>
+   </Properties>
+   <Dependencies>
+@@ -15,15 +15,15 @@
+   </Resources>
+   <Applications>
+     <Application Id="App" Executable="$targetnametoken$.exe" EntryPoint="RetroArch.App">
+-      <uap:VisualElements DisplayName="RetroArch" Square150x150Logo="Assets\Square150x150Logo.png" Square44x44Logo="Assets\Square44x44Logo.png" Description="RetroArch is a frontend for emulators, game engines and media players. It enables you to run classic games on a wide range of computers and consoles through its slick graphical interface. Settings are also unified so configuration is done once and for all. RetroArch has advanced features like shaders, netplay, rewinding, next-frame response times, and more!" BackgroundColor="transparent">
++      <uap:VisualElements DisplayName="RetroArch for Game Vault" Square150x150Logo="Assets\Square150x150Logo.png" Square44x44Logo="Assets\Square44x44Logo.png" Description="RetroArch (by libretro) built for Game Vault: plays from any USB drive and from the console's disc drive. RetroArch is a frontend for emulators, game engines and media players. It enables you to run classic games on a wide range of computers and consoles through its slick graphical interface. Settings are also unified so configuration is done once and for all. RetroArch has advanced features like shaders, netplay, rewinding, next-frame response times, and more!" BackgroundColor="transparent">
+         <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" Square310x310Logo="Assets\LargeTile.png" Square71x71Logo="Assets\SmallTile.png">
+         </uap:DefaultTile>
+         <uap:SplashScreen Image="Assets\SplashScreen.png" BackgroundColor="#000000"/>
+       </uap:VisualElements>
+       <Extensions>
+         <uap:Extension Category="windows.protocol">
+-          <uap:Protocol Name="retroarch">
+-            <uap:DisplayName>retroarch</uap:DisplayName>
++          <uap:Protocol Name="gamevault-retroarch">
++            <uap:DisplayName>RetroArch for Game Vault</uap:DisplayName>
+           </uap:Protocol>
+         </uap:Extension>
+       </Extensions>
+@@ -33,8 +33,11 @@
+     <Capability Name="internetClient" />
+     <Capability Name="internetClientServer" />
+     <Capability Name="privateNetworkClientServer" />
++    <uap:Capability Name="removableStorage" />
+     <rescap:Capability Name="runFullTrust"/>
+     <rescap:Capability Name="broadFileSystemAccess" />
+     <rescap:Capability Name="expandedResources" />
++    <DeviceCapability Name="optical" />
++    <DeviceCapability Name="53f56308-b6bf-11d0-94f2-00a0c91efb8b" />
+   </Capabilities>
+ </Package>
+diff --git a/pkg/msvc-uwp/RetroArch-msvcUWP/RetroArch-msvcUWP.vcxproj b/pkg/msvc-uwp/RetroArch-msvcUWP/RetroArch-msvcUWP.vcxproj
+index bc36155..02bd45c 100644
+--- a/pkg/msvc-uwp/RetroArch-msvcUWP/RetroArch-msvcUWP.vcxproj
++++ b/pkg/msvc-uwp/RetroArch-msvcUWP/RetroArch-msvcUWP.vcxproj
+@@ -102,7 +102,7 @@
+       <AdditionalIncludeDirectories>$(MSBuildProjectDirectory);$(MSBuildProjectDirectory)\..\..\..\;$(MSBuildProjectDirectory)\..\..\..\deps\rcheevos\include;$(MSBuildProjectDirectory)\..\..\..\libretro-common\include;$(MSBuildProjectDirectory)\..\..\..\libretro-common\include\compat\zlib;$(MSBuildProjectDirectory)\..\..\..\deps;$(MSBuildProjectDirectory)\..\..\..\deps\zstd\lib;$(MSBuildProjectDirectory)\..\..\..\deps\zstd\common;$(MSBuildProjectDirectory)\..\..\..\deps\zstd\compress;$(MSBuildProjectDirectory)\..\..\..\deps\zstd\decompress;$(MSBuildProjectDirectory)\..\..\..\deps\7zip;$(MSBuildProjectDirectory)\..\..\..\deps\dr;$(MSBuildProjectDirectory)\..\..\..\deps\stb;$(MSBuildProjectDirectory)\..\..\..\deps\glslang;$(MSBuildProjectDirectory)\..\..\..\deps\SPIRV-Cross;$(MSBuildProjectDirectory)\..\..\..\deps\libsmb2\include\smb2;$(MSBuildProjectDirectory)\..\..\..\deps\libsmb2\include;$(MSBuildProjectDirectory)\..\..\..\deps\stb;$(MSBuildProjectDirectory)\..\..\..\gfx\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+       <AdditionalOptions>/bigobj %(AdditionalOptions) /utf-8</AdditionalOptions>
+       <DisableSpecificWarnings>4453;28204</DisableSpecificWarnings>
+-      <PreprocessorDefinitions>WIN32;HAVE_XDELTA;HAVE_MAIN;HAVE_DYNAMIC;HAVE_DYLIB;HAVE_XAUDIO2;RARCH_INTERNAL;HAVE_CC_RESAMPLER;WANT_GLSLANG;HAVE_GLSLANG;HAVE_BUILTINGLSLANG;HAVE_SLANG;HAVE_SPIRV_CROSS;HAVE_ONLINE_UPDATER;HAVE_UPDATE_ASSETS;HAVE_UPDATE_CORES;HAVE_UPDATE_CORE_INFO;HAVE_D3D;HAVE_D3D11;HAVE_D3D12;HAVE_BUILTINSMBCLIENT;HAVE_SMBCLIENT;_U_=/**/;HAVE_FCNTL_H;HAVE_STDINT_H;HAVE_LINGER;NEED_RANDOM;NEED_SRANDOM;NEED_GETLOGIN_R;RC_DISABLE_LUA;HAVE_CHEEVOS;HAVE_CHD;HAVE_RUNAHEAD;HAVE_GRIFFIN;HAVE_LANGEXTRA;HAVE_RZSTD;HAVE_7ZIP;HAVE_TRANSLATE;HAVE_ACCESSIBILITY;HAVE_RPNG;HAVE_RWEBP;HAVE_RDDS;HAVE_CORE_INFO_CACHE;HAVE_RJPEG;HAVE_RBMP;HAVE_RTGA;HAVE_IMAGEVIEWER;HAVE_XMB;HAVE_OZONE;HAVE_SHADERPIPELINE;DEBUG;_DEBUG;_WINDOWS;%(PreprocessorDefinitions);HAVE_XINPUT;HAVE_XINPUT2;HAVE_XAUDIO;HAVE_RVORBIS;HAVE_RMODTRACKER;HAVE_DR_FLAC;HAVE_DR_MP3;HAVE_DIRECTX;HAVE_NETWORKING;HAVE_IFINFO;HAVE_NETWORK_CMD;HAVE_NETPLAYDISCOVERY;HAVE_COMMAND;HAVE_STDIN_CMD;HAVE_THREADS;_CRT_NONSTDC_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;HAVE_OVERLAY;HAVE_RGUI;HAVE_MENU;HAVE_GFX_WIDGETS;HAVE_CONFIGFILE;HAVE_PATCH;HAVE_DSP_FILTER;HAVE_VIDEO_FILTER;HAVE_REWIND;HAVE_SCREENSHOTS;HAVE_CHEATS;HAVE_MATERIALUI;HAVE_LIBRETRODB;HAVE_AUDIOMIXER;HAVE_RWAV;HAVE_STB_FONT;HAVE_STATIC_DUMMY;HAVE_STATIC_VIDEO_FILTERS;HAVE_STATIC_AUDIO_FILTERS;HAVE_CLOUDSYNC;_SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING</PreprocessorDefinitions>
++      <PreprocessorDefinitions>HAVE_CDROM;WIN32;HAVE_XDELTA;HAVE_MAIN;HAVE_DYNAMIC;HAVE_DYLIB;HAVE_XAUDIO2;RARCH_INTERNAL;HAVE_CC_RESAMPLER;WANT_GLSLANG;HAVE_GLSLANG;HAVE_BUILTINGLSLANG;HAVE_SLANG;HAVE_SPIRV_CROSS;HAVE_ONLINE_UPDATER;HAVE_UPDATE_ASSETS;HAVE_UPDATE_CORES;HAVE_UPDATE_CORE_INFO;HAVE_D3D;HAVE_D3D11;HAVE_D3D12;HAVE_BUILTINSMBCLIENT;HAVE_SMBCLIENT;_U_=/**/;HAVE_FCNTL_H;HAVE_STDINT_H;HAVE_LINGER;NEED_RANDOM;NEED_SRANDOM;NEED_GETLOGIN_R;RC_DISABLE_LUA;HAVE_CHEEVOS;HAVE_CHD;HAVE_RUNAHEAD;HAVE_GRIFFIN;HAVE_LANGEXTRA;HAVE_RZSTD;HAVE_7ZIP;HAVE_TRANSLATE;HAVE_ACCESSIBILITY;HAVE_RPNG;HAVE_RWEBP;HAVE_RDDS;HAVE_CORE_INFO_CACHE;HAVE_RJPEG;HAVE_RBMP;HAVE_RTGA;HAVE_IMAGEVIEWER;HAVE_XMB;HAVE_OZONE;HAVE_SHADERPIPELINE;DEBUG;_DEBUG;_WINDOWS;%(PreprocessorDefinitions);HAVE_XINPUT;HAVE_XINPUT2;HAVE_XAUDIO;HAVE_RVORBIS;HAVE_RMODTRACKER;HAVE_DR_FLAC;HAVE_DR_MP3;HAVE_DIRECTX;HAVE_NETWORKING;HAVE_IFINFO;HAVE_NETWORK_CMD;HAVE_NETPLAYDISCOVERY;HAVE_COMMAND;HAVE_STDIN_CMD;HAVE_THREADS;_CRT_NONSTDC_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;HAVE_OVERLAY;HAVE_RGUI;HAVE_MENU;HAVE_GFX_WIDGETS;HAVE_CONFIGFILE;HAVE_PATCH;HAVE_DSP_FILTER;HAVE_VIDEO_FILTER;HAVE_REWIND;HAVE_SCREENSHOTS;HAVE_CHEATS;HAVE_MATERIALUI;HAVE_LIBRETRODB;HAVE_AUDIOMIXER;HAVE_RWAV;HAVE_STB_FONT;HAVE_STATIC_DUMMY;HAVE_STATIC_VIDEO_FILTERS;HAVE_STATIC_AUDIO_FILTERS;HAVE_CLOUDSYNC;_SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING</PreprocessorDefinitions>
+     </ClCompile>
+   </ItemDefinitionGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DebugANGLE|ARM64'">
+@@ -117,7 +117,7 @@
+       <AdditionalIncludeDirectories>$(MSBuildProjectDirectory);$(MSBuildProjectDirectory)\..\..\..\;$(MSBuildProjectDirectory)\..\..\..\deps\rcheevos\include;$(MSBuildProjectDirectory)\..\..\..\libretro-common\include;$(MSBuildProjectDirectory)\..\..\..\libretro-common\include\compat\zlib;$(MSBuildProjectDirectory)\..\..\..\deps;$(MSBuildProjectDirectory)\..\..\..\deps\zstd\lib;$(MSBuildProjectDirectory)\..\..\..\deps\zstd\common;$(MSBuildProjectDirectory)\..\..\..\deps\zstd\compress;$(MSBuildProjectDirectory)\..\..\..\deps\zstd\decompress;$(MSBuildProjectDirectory)\..\..\..\deps\7zip;$(MSBuildProjectDirectory)\..\..\..\deps\dr;$(MSBuildProjectDirectory)\..\..\..\deps\stb;$(MSBuildProjectDirectory)\..\..\..\deps\glslang;$(MSBuildProjectDirectory)\..\..\..\deps\SPIRV-Cross;$(MSBuildProjectDirectory)\..\..\..\deps\libsmb2\include\smb2;$(MSBuildProjectDirectory)\..\..\..\deps\libsmb2\include;$(MSBuildProjectDirectory)\..\..\..\deps\stb;$(MSBuildProjectDirectory)\..\..\..\gfx\include;$(MSBuildProjectDirectory)\..\..\..\gfx\include\ANGLE;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+       <AdditionalOptions>/bigobj %(AdditionalOptions) /utf-8</AdditionalOptions>
+       <DisableSpecificWarnings>4453;28204</DisableSpecificWarnings>
+-      <PreprocessorDefinitions>WIN32;HAVE_XDELTA;HAVE_MAIN;HAVE_DYNAMIC;HAVE_DYLIB;HAVE_XAUDIO2;RARCH_INTERNAL;HAVE_CC_RESAMPLER;WANT_GLSLANG;HAVE_GLSLANG;HAVE_BUILTINGLSLANG;HAVE_SLANG;HAVE_SPIRV_CROSS;HAVE_ONLINE_UPDATER;HAVE_UPDATE_ASSETS;HAVE_UPDATE_CORES;HAVE_UPDATE_CORE_INFO;HAVE_D3D;HAVE_D3D11;HAVE_D3D12;HAVE_BUILTINSMBCLIENT;HAVE_SMBCLIENT;_U_=/**/;HAVE_FCNTL_H;HAVE_STDINT_H;HAVE_LINGER;NEED_RANDOM;NEED_SRANDOM;NEED_GETLOGIN_R;RC_DISABLE_LUA;HAVE_CHEEVOS;HAVE_CHD;HAVE_RUNAHEAD;HAVE_GRIFFIN;HAVE_LANGEXTRA;HAVE_RZSTD;HAVE_7ZIP;HAVE_TRANSLATE;HAVE_ACCESSIBILITY;HAVE_RPNG;HAVE_RWEBP;HAVE_RDDS;HAVE_CORE_INFO_CACHE;HAVE_RJPEG;HAVE_RBMP;HAVE_RTGA;HAVE_IMAGEVIEWER;HAVE_XMB;HAVE_OZONE;HAVE_SHADERPIPELINE;DEBUG;_DEBUG;_WINDOWS;%(PreprocessorDefinitions);HAVE_XINPUT;HAVE_XINPUT2;HAVE_XAUDIO;HAVE_RVORBIS;HAVE_RMODTRACKER;HAVE_DR_FLAC;HAVE_DR_MP3;HAVE_DIRECTX;HAVE_NETWORKING;HAVE_IFINFO;HAVE_NETWORK_CMD;HAVE_NETPLAYDISCOVERY;HAVE_COMMAND;HAVE_STDIN_CMD;HAVE_THREADS;_CRT_NONSTDC_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;HAVE_OVERLAY;HAVE_RGUI;HAVE_MENU;HAVE_GFX_WIDGETS;HAVE_CONFIGFILE;HAVE_PATCH;HAVE_DSP_FILTER;HAVE_VIDEO_FILTER;HAVE_REWIND;HAVE_SCREENSHOTS;HAVE_CHEATS;HAVE_MATERIALUI;HAVE_LIBRETRODB;HAVE_AUDIOMIXER;HAVE_RWAV;HAVE_STB_FONT;HAVE_STATIC_DUMMY;HAVE_STATIC_VIDEO_FILTERS;HAVE_STATIC_AUDIO_FILTERS;HAVE_ANGLE;HAVE_OPENGL;HAVE_OPENGLES;HAVE_OPENGLES2;HAVE_GLSL;HAVE_CLOUDSYNC;_SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING</PreprocessorDefinitions>
++      <PreprocessorDefinitions>HAVE_CDROM;WIN32;HAVE_XDELTA;HAVE_MAIN;HAVE_DYNAMIC;HAVE_DYLIB;HAVE_XAUDIO2;RARCH_INTERNAL;HAVE_CC_RESAMPLER;WANT_GLSLANG;HAVE_GLSLANG;HAVE_BUILTINGLSLANG;HAVE_SLANG;HAVE_SPIRV_CROSS;HAVE_ONLINE_UPDATER;HAVE_UPDATE_ASSETS;HAVE_UPDATE_CORES;HAVE_UPDATE_CORE_INFO;HAVE_D3D;HAVE_D3D11;HAVE_D3D12;HAVE_BUILTINSMBCLIENT;HAVE_SMBCLIENT;_U_=/**/;HAVE_FCNTL_H;HAVE_STDINT_H;HAVE_LINGER;NEED_RANDOM;NEED_SRANDOM;NEED_GETLOGIN_R;RC_DISABLE_LUA;HAVE_CHEEVOS;HAVE_CHD;HAVE_RUNAHEAD;HAVE_GRIFFIN;HAVE_LANGEXTRA;HAVE_RZSTD;HAVE_7ZIP;HAVE_TRANSLATE;HAVE_ACCESSIBILITY;HAVE_RPNG;HAVE_RWEBP;HAVE_RDDS;HAVE_CORE_INFO_CACHE;HAVE_RJPEG;HAVE_RBMP;HAVE_RTGA;HAVE_IMAGEVIEWER;HAVE_XMB;HAVE_OZONE;HAVE_SHADERPIPELINE;DEBUG;_DEBUG;_WINDOWS;%(PreprocessorDefinitions);HAVE_XINPUT;HAVE_XINPUT2;HAVE_XAUDIO;HAVE_RVORBIS;HAVE_RMODTRACKER;HAVE_DR_FLAC;HAVE_DR_MP3;HAVE_DIRECTX;HAVE_NETWORKING;HAVE_IFINFO;HAVE_NETWORK_CMD;HAVE_NETPLAYDISCOVERY;HAVE_COMMAND;HAVE_STDIN_CMD;HAVE_THREADS;_CRT_NONSTDC_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;HAVE_OVERLAY;HAVE_RGUI;HAVE_MENU;HAVE_GFX_WIDGETS;HAVE_CONFIGFILE;HAVE_PATCH;HAVE_DSP_FILTER;HAVE_VIDEO_FILTER;HAVE_REWIND;HAVE_SCREENSHOTS;HAVE_CHEATS;HAVE_MATERIALUI;HAVE_LIBRETRODB;HAVE_AUDIOMIXER;HAVE_RWAV;HAVE_STB_FONT;HAVE_STATIC_DUMMY;HAVE_STATIC_VIDEO_FILTERS;HAVE_STATIC_AUDIO_FILTERS;HAVE_ANGLE;HAVE_OPENGL;HAVE_OPENGLES;HAVE_OPENGLES2;HAVE_GLSL;HAVE_CLOUDSYNC;_SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING</PreprocessorDefinitions>
+     </ClCompile>
+   </ItemDefinitionGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
+@@ -132,7 +132,7 @@
+       <AdditionalIncludeDirectories>$(MSBuildProjectDirectory);$(MSBuildProjectDirectory)\..\..\..\;$(MSBuildProjectDirectory)\..\..\..\deps\rcheevos\include;$(MSBuildProjectDirectory)\..\..\..\libretro-common\include;$(MSBuildProjectDirectory)\..\..\..\libretro-common\include\compat\zlib;$(MSBuildProjectDirectory)\..\..\..\deps;$(MSBuildProjectDirectory)\..\..\..\deps\zstd\lib;$(MSBuildProjectDirectory)\..\..\..\deps\zstd\common;$(MSBuildProjectDirectory)\..\..\..\deps\zstd\compress;$(MSBuildProjectDirectory)\..\..\..\deps\zstd\decompress;$(MSBuildProjectDirectory)\..\..\..\deps\7zip;$(MSBuildProjectDirectory)\..\..\..\deps\dr;$(MSBuildProjectDirectory)\..\..\..\deps\stb;$(MSBuildProjectDirectory)\..\..\..\deps\glslang;$(MSBuildProjectDirectory)\..\..\..\deps\SPIRV-Cross;$(MSBuildProjectDirectory)\..\..\..\deps\libsmb2\include\smb2;$(MSBuildProjectDirectory)\..\..\..\deps\libsmb2\include;$(MSBuildProjectDirectory)\..\..\..\deps\stb;$(MSBuildProjectDirectory)\..\..\..\gfx\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+       <AdditionalOptions>/bigobj %(AdditionalOptions) /utf-8</AdditionalOptions>
+       <DisableSpecificWarnings>4453;28204</DisableSpecificWarnings>
+-      <PreprocessorDefinitions>WIN32;HAVE_XDELTA;HAVE_MAIN;HAVE_DYNAMIC;HAVE_DYLIB;HAVE_XAUDIO2;RARCH_INTERNAL;HAVE_CC_RESAMPLER;WANT_GLSLANG;HAVE_GLSLANG;HAVE_BUILTINGLSLANG;HAVE_SLANG;HAVE_SPIRV_CROSS;HAVE_ONLINE_UPDATER;HAVE_UPDATE_ASSETS;HAVE_UPDATE_CORES;HAVE_UPDATE_CORE_INFO;HAVE_D3D;HAVE_D3D11;HAVE_D3D12;HAVE_BUILTINSMBCLIENT;HAVE_SMBCLIENT;_U_=/**/;HAVE_FCNTL_H;HAVE_STDINT_H;HAVE_LINGER;NEED_RANDOM;NEED_SRANDOM;NEED_GETLOGIN_R;RC_DISABLE_LUA;HAVE_CHEEVOS;HAVE_CHD;HAVE_RUNAHEAD;HAVE_GRIFFIN;HAVE_LANGEXTRA;HAVE_RZSTD;HAVE_7ZIP;HAVE_TRANSLATE;HAVE_ACCESSIBILITY;HAVE_XMB;HAVE_OZONE;HAVE_SHADERPIPELINE;HAVE_RPNG;HAVE_RWEBP;HAVE_RDDS;HAVE_CORE_INFO_CACHE;HAVE_RJPEG;HAVE_RBMP;HAVE_RTGA;HAVE_IMAGEVIEWER;NDEBUG;_WINDOWS;%(PreprocessorDefinitions);HAVE_XINPUT;HAVE_XINPUT2;HAVE_XAUDIO;HAVE_RVORBIS;HAVE_RMODTRACKER;HAVE_DR_FLAC;HAVE_DR_MP3;HAVE_DIRECTX;HAVE_NETWORKING;HAVE_IFINFO;HAVE_NETWORK_CMD;HAVE_NETPLAYDISCOVERY;HAVE_COMMAND;HAVE_STDIN_CMD;HAVE_THREADS;_CRT_NONSTDC_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;HAVE_OVERLAY;HAVE_MENU;HAVE_GFX_WIDGETS;HAVE_CONFIGFILE;HAVE_PATCH;HAVE_DSP_FILTER;HAVE_VIDEO_FILTER;HAVE_REWIND;HAVE_SCREENSHOTS;HAVE_CHEATS;HAVE_RGUI;HAVE_MATERIALUI;HAVE_LIBRETRODB;HAVE_AUDIOMIXER;HAVE_RWAV;HAVE_STB_FONT;HAVE_STATIC_DUMMY;HAVE_STATIC_VIDEO_FILTERS;HAVE_STATIC_AUDIO_FILTERS;HAVE_CLOUDSYNC;_SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING</PreprocessorDefinitions>
++      <PreprocessorDefinitions>HAVE_CDROM;WIN32;HAVE_XDELTA;HAVE_MAIN;HAVE_DYNAMIC;HAVE_DYLIB;HAVE_XAUDIO2;RARCH_INTERNAL;HAVE_CC_RESAMPLER;WANT_GLSLANG;HAVE_GLSLANG;HAVE_BUILTINGLSLANG;HAVE_SLANG;HAVE_SPIRV_CROSS;HAVE_ONLINE_UPDATER;HAVE_UPDATE_ASSETS;HAVE_UPDATE_CORES;HAVE_UPDATE_CORE_INFO;HAVE_D3D;HAVE_D3D11;HAVE_D3D12;HAVE_BUILTINSMBCLIENT;HAVE_SMBCLIENT;_U_=/**/;HAVE_FCNTL_H;HAVE_STDINT_H;HAVE_LINGER;NEED_RANDOM;NEED_SRANDOM;NEED_GETLOGIN_R;RC_DISABLE_LUA;HAVE_CHEEVOS;HAVE_CHD;HAVE_RUNAHEAD;HAVE_GRIFFIN;HAVE_LANGEXTRA;HAVE_RZSTD;HAVE_7ZIP;HAVE_TRANSLATE;HAVE_ACCESSIBILITY;HAVE_XMB;HAVE_OZONE;HAVE_SHADERPIPELINE;HAVE_RPNG;HAVE_RWEBP;HAVE_RDDS;HAVE_CORE_INFO_CACHE;HAVE_RJPEG;HAVE_RBMP;HAVE_RTGA;HAVE_IMAGEVIEWER;NDEBUG;_WINDOWS;%(PreprocessorDefinitions);HAVE_XINPUT;HAVE_XINPUT2;HAVE_XAUDIO;HAVE_RVORBIS;HAVE_RMODTRACKER;HAVE_DR_FLAC;HAVE_DR_MP3;HAVE_DIRECTX;HAVE_NETWORKING;HAVE_IFINFO;HAVE_NETWORK_CMD;HAVE_NETPLAYDISCOVERY;HAVE_COMMAND;HAVE_STDIN_CMD;HAVE_THREADS;_CRT_NONSTDC_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;HAVE_OVERLAY;HAVE_MENU;HAVE_GFX_WIDGETS;HAVE_CONFIGFILE;HAVE_PATCH;HAVE_DSP_FILTER;HAVE_VIDEO_FILTER;HAVE_REWIND;HAVE_SCREENSHOTS;HAVE_CHEATS;HAVE_RGUI;HAVE_MATERIALUI;HAVE_LIBRETRODB;HAVE_AUDIOMIXER;HAVE_RWAV;HAVE_STB_FONT;HAVE_STATIC_DUMMY;HAVE_STATIC_VIDEO_FILTERS;HAVE_STATIC_AUDIO_FILTERS;HAVE_CLOUDSYNC;_SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING</PreprocessorDefinitions>
+     </ClCompile>
+   </ItemDefinitionGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseANGLE|ARM64'">
+@@ -147,7 +147,7 @@
+       <AdditionalIncludeDirectories>$(MSBuildProjectDirectory);$(MSBuildProjectDirectory)\..\..\..\;$(MSBuildProjectDirectory)\..\..\..\deps\rcheevos\include;$(MSBuildProjectDirectory)\..\..\..\libretro-common\include;$(MSBuildProjectDirectory)\..\..\..\libretro-common\include\compat\zlib;$(MSBuildProjectDirectory)\..\..\..\deps;$(MSBuildProjectDirectory)\..\..\..\deps\zstd\lib;$(MSBuildProjectDirectory)\..\..\..\deps\zstd\common;$(MSBuildProjectDirectory)\..\..\..\deps\zstd\compress;$(MSBuildProjectDirectory)\..\..\..\deps\zstd\decompress;$(MSBuildProjectDirectory)\..\..\..\deps\7zip;$(MSBuildProjectDirectory)\..\..\..\deps\dr;$(MSBuildProjectDirectory)\..\..\..\deps\stb;$(MSBuildProjectDirectory)\..\..\..\deps\glslang;$(MSBuildProjectDirectory)\..\..\..\deps\SPIRV-Cross;$(MSBuildProjectDirectory)\..\..\..\deps\libsmb2\include\smb2;$(MSBuildProjectDirectory)\..\..\..\deps\libsmb2\include;$(MSBuildProjectDirectory)\..\..\..\deps\stb;$(MSBuildProjectDirectory)\..\..\..\gfx\include;$(MSBuildProjectDirectory)\..\..\..\gfx\include\ANGLE;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+       <AdditionalOptions>/bigobj %(AdditionalOptions) /utf-8</AdditionalOptions>
+       <DisableSpecificWarnings>4453;28204</DisableSpecificWarnings>
+-      <PreprocessorDefinitions>WIN32;HAVE_XDELTA;HAVE_MAIN;HAVE_DYNAMIC;HAVE_DYLIB;HAVE_XAUDIO2;RARCH_INTERNAL;HAVE_CC_RESAMPLER;WANT_GLSLANG;HAVE_GLSLANG;HAVE_BUILTINGLSLANG;HAVE_SLANG;HAVE_SPIRV_CROSS;HAVE_ONLINE_UPDATER;HAVE_UPDATE_ASSETS;HAVE_UPDATE_CORES;HAVE_UPDATE_CORE_INFO;HAVE_D3D;HAVE_D3D11;HAVE_D3D12;HAVE_BUILTINSMBCLIENT;HAVE_SMBCLIENT;_U_=/**/;HAVE_FCNTL_H;HAVE_STDINT_H;HAVE_LINGER;NEED_RANDOM;NEED_SRANDOM;NEED_GETLOGIN_R;RC_DISABLE_LUA;HAVE_CHEEVOS;HAVE_CHD;HAVE_RUNAHEAD;HAVE_GRIFFIN;HAVE_LANGEXTRA;HAVE_RZSTD;HAVE_7ZIP;HAVE_TRANSLATE;HAVE_ACCESSIBILITY;HAVE_XMB;HAVE_OZONE;HAVE_SHADERPIPELINE;HAVE_RPNG;HAVE_RWEBP;HAVE_RDDS;HAVE_CORE_INFO_CACHE;HAVE_RJPEG;HAVE_RBMP;HAVE_RTGA;HAVE_IMAGEVIEWER;NDEBUG;_WINDOWS;%(PreprocessorDefinitions);HAVE_XINPUT;HAVE_XINPUT2;HAVE_XAUDIO;HAVE_RVORBIS;HAVE_RMODTRACKER;HAVE_DR_FLAC;HAVE_DR_MP3;HAVE_DIRECTX;HAVE_NETWORKING;HAVE_IFINFO;HAVE_NETWORK_CMD;HAVE_NETPLAYDISCOVERY;HAVE_COMMAND;HAVE_STDIN_CMD;HAVE_THREADS;_CRT_NONSTDC_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;HAVE_OVERLAY;HAVE_MENU;HAVE_GFX_WIDGETS;HAVE_CONFIGFILE;HAVE_PATCH;HAVE_DSP_FILTER;HAVE_VIDEO_FILTER;HAVE_REWIND;HAVE_SCREENSHOTS;HAVE_CHEATS;HAVE_RGUI;HAVE_MATERIALUI;HAVE_LIBRETRODB;HAVE_AUDIOMIXER;HAVE_RWAV;HAVE_STB_FONT;HAVE_STATIC_DUMMY;HAVE_STATIC_VIDEO_FILTERS;HAVE_STATIC_AUDIO_FILTERS;HAVE_ANGLE;HAVE_OPENGL;HAVE_OPENGLES;HAVE_OPENGLES2;HAVE_GLSL;HAVE_CLOUDSYNC;_SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING</PreprocessorDefinitions>
++      <PreprocessorDefinitions>HAVE_CDROM;WIN32;HAVE_XDELTA;HAVE_MAIN;HAVE_DYNAMIC;HAVE_DYLIB;HAVE_XAUDIO2;RARCH_INTERNAL;HAVE_CC_RESAMPLER;WANT_GLSLANG;HAVE_GLSLANG;HAVE_BUILTINGLSLANG;HAVE_SLANG;HAVE_SPIRV_CROSS;HAVE_ONLINE_UPDATER;HAVE_UPDATE_ASSETS;HAVE_UPDATE_CORES;HAVE_UPDATE_CORE_INFO;HAVE_D3D;HAVE_D3D11;HAVE_D3D12;HAVE_BUILTINSMBCLIENT;HAVE_SMBCLIENT;_U_=/**/;HAVE_FCNTL_H;HAVE_STDINT_H;HAVE_LINGER;NEED_RANDOM;NEED_SRANDOM;NEED_GETLOGIN_R;RC_DISABLE_LUA;HAVE_CHEEVOS;HAVE_CHD;HAVE_RUNAHEAD;HAVE_GRIFFIN;HAVE_LANGEXTRA;HAVE_RZSTD;HAVE_7ZIP;HAVE_TRANSLATE;HAVE_ACCESSIBILITY;HAVE_XMB;HAVE_OZONE;HAVE_SHADERPIPELINE;HAVE_RPNG;HAVE_RWEBP;HAVE_RDDS;HAVE_CORE_INFO_CACHE;HAVE_RJPEG;HAVE_RBMP;HAVE_RTGA;HAVE_IMAGEVIEWER;NDEBUG;_WINDOWS;%(PreprocessorDefinitions);HAVE_XINPUT;HAVE_XINPUT2;HAVE_XAUDIO;HAVE_RVORBIS;HAVE_RMODTRACKER;HAVE_DR_FLAC;HAVE_DR_MP3;HAVE_DIRECTX;HAVE_NETWORKING;HAVE_IFINFO;HAVE_NETWORK_CMD;HAVE_NETPLAYDISCOVERY;HAVE_COMMAND;HAVE_STDIN_CMD;HAVE_THREADS;_CRT_NONSTDC_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;HAVE_OVERLAY;HAVE_MENU;HAVE_GFX_WIDGETS;HAVE_CONFIGFILE;HAVE_PATCH;HAVE_DSP_FILTER;HAVE_VIDEO_FILTER;HAVE_REWIND;HAVE_SCREENSHOTS;HAVE_CHEATS;HAVE_RGUI;HAVE_MATERIALUI;HAVE_LIBRETRODB;HAVE_AUDIOMIXER;HAVE_RWAV;HAVE_STB_FONT;HAVE_STATIC_DUMMY;HAVE_STATIC_VIDEO_FILTERS;HAVE_STATIC_AUDIO_FILTERS;HAVE_ANGLE;HAVE_OPENGL;HAVE_OPENGLES;HAVE_OPENGLES2;HAVE_GLSL;HAVE_CLOUDSYNC;_SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING</PreprocessorDefinitions>
+     </ClCompile>
+   </ItemDefinitionGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+@@ -162,7 +162,7 @@
+       <AdditionalIncludeDirectories>$(MSBuildProjectDirectory);$(MSBuildProjectDirectory)\..\..\..\;$(MSBuildProjectDirectory)\..\..\..\deps\rcheevos\include;$(MSBuildProjectDirectory)\..\..\..\libretro-common\include;$(MSBuildProjectDirectory)\..\..\..\libretro-common\include\compat\zlib;$(MSBuildProjectDirectory)\..\..\..\deps;$(MSBuildProjectDirectory)\..\..\..\deps\zstd\lib;$(MSBuildProjectDirectory)\..\..\..\deps\zstd\common;$(MSBuildProjectDirectory)\..\..\..\deps\zstd\compress;$(MSBuildProjectDirectory)\..\..\..\deps\zstd\decompress;$(MSBuildProjectDirectory)\..\..\..\deps\7zip;$(MSBuildProjectDirectory)\..\..\..\deps\dr;$(MSBuildProjectDirectory)\..\..\..\deps\stb;$(MSBuildProjectDirectory)\..\..\..\deps\glslang;$(MSBuildProjectDirectory)\..\..\..\deps\SPIRV-Cross;$(MSBuildProjectDirectory)\..\..\..\deps\libsmb2\include\smb2;$(MSBuildProjectDirectory)\..\..\..\deps\libsmb2\include;$(MSBuildProjectDirectory)\..\..\..\gfx\include;$(MSBuildProjectDirectory)\..\..\..\gfx\include\MESA;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+       <AdditionalOptions>/bigobj %(AdditionalOptions) /utf-8</AdditionalOptions>
+       <DisableSpecificWarnings>4453;28204</DisableSpecificWarnings>
+-      <PreprocessorDefinitions>WIN32;HAVE_XDELTA;HAVE_MAIN;HAVE_DYNAMIC;HAVE_DYLIB;HAVE_XAUDIO2;RARCH_INTERNAL;HAVE_CC_RESAMPLER;WANT_GLSLANG;HAVE_GLSLANG;HAVE_BUILTINGLSLANG;HAVE_SLANG;HAVE_SPIRV_CROSS;HAVE_ONLINE_UPDATER;HAVE_UPDATE_ASSETS;HAVE_UPDATE_CORES;HAVE_UPDATE_CORE_INFO;HAVE_D3D;HAVE_D3D11;HAVE_D3D12;HAVE_BUILTINSMBCLIENT;HAVE_SMBCLIENT;_U_=/**/;HAVE_FCNTL_H;HAVE_STDINT_H;HAVE_LINGER;NEED_RANDOM;NEED_SRANDOM;NEED_GETLOGIN_R;HAVE_OPENGL;HAVE_GLSL;HAVE_HLSL;RC_DISABLE_LUA;HAVE_CHEEVOS;HAVE_CHD;HAVE_RUNAHEAD;HAVE_GRIFFIN;HAVE_LANGEXTRA;HAVE_RZSTD;HAVE_7ZIP;HAVE_TRANSLATE;HAVE_ACCESSIBILITY;HAVE_RPNG;HAVE_RWEBP;HAVE_RDDS;HAVE_CORE_INFO_CACHE;HAVE_RJPEG;HAVE_RBMP;HAVE_RTGA;HAVE_IMAGEVIEWER;HAVE_XMB;HAVE_OZONE;HAVE_SHADERPIPELINE;DEBUG;_DEBUG;_WINDOWS;%(PreprocessorDefinitions);HAVE_XINPUT;HAVE_XINPUT2;HAVE_XAUDIO;HAVE_RVORBIS;HAVE_RMODTRACKER;HAVE_DR_FLAC;HAVE_DR_MP3;HAVE_DIRECTX;HAVE_NETWORKING;HAVE_IFINFO;HAVE_NETWORK_CMD;HAVE_NETPLAYDISCOVERY;HAVE_COMMAND;HAVE_STDIN_CMD;HAVE_THREADS;_CRT_NONSTDC_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;HAVE_OVERLAY;HAVE_RGUI;HAVE_MENU;HAVE_GFX_WIDGETS;HAVE_CONFIGFILE;HAVE_PATCH;HAVE_DSP_FILTER;HAVE_VIDEO_FILTER;HAVE_REWIND;HAVE_SCREENSHOTS;HAVE_CHEATS;HAVE_MATERIALUI;HAVE_LIBRETRODB;HAVE_AUDIOMIXER;HAVE_RWAV;HAVE_STB_FONT;HAVE_STATIC_DUMMY;HAVE_STATIC_VIDEO_FILTERS;HAVE_STATIC_AUDIO_FILTERS;HAVE_CLOUDSYNC;_SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING</PreprocessorDefinitions>
++      <PreprocessorDefinitions>HAVE_CDROM;WIN32;HAVE_XDELTA;HAVE_MAIN;HAVE_DYNAMIC;HAVE_DYLIB;HAVE_XAUDIO2;RARCH_INTERNAL;HAVE_CC_RESAMPLER;WANT_GLSLANG;HAVE_GLSLANG;HAVE_BUILTINGLSLANG;HAVE_SLANG;HAVE_SPIRV_CROSS;HAVE_ONLINE_UPDATER;HAVE_UPDATE_ASSETS;HAVE_UPDATE_CORES;HAVE_UPDATE_CORE_INFO;HAVE_D3D;HAVE_D3D11;HAVE_D3D12;HAVE_BUILTINSMBCLIENT;HAVE_SMBCLIENT;_U_=/**/;HAVE_FCNTL_H;HAVE_STDINT_H;HAVE_LINGER;NEED_RANDOM;NEED_SRANDOM;NEED_GETLOGIN_R;HAVE_OPENGL;HAVE_GLSL;HAVE_HLSL;RC_DISABLE_LUA;HAVE_CHEEVOS;HAVE_CHD;HAVE_RUNAHEAD;HAVE_GRIFFIN;HAVE_LANGEXTRA;HAVE_RZSTD;HAVE_7ZIP;HAVE_TRANSLATE;HAVE_ACCESSIBILITY;HAVE_RPNG;HAVE_RWEBP;HAVE_RDDS;HAVE_CORE_INFO_CACHE;HAVE_RJPEG;HAVE_RBMP;HAVE_RTGA;HAVE_IMAGEVIEWER;HAVE_XMB;HAVE_OZONE;HAVE_SHADERPIPELINE;DEBUG;_DEBUG;_WINDOWS;%(PreprocessorDefinitions);HAVE_XINPUT;HAVE_XINPUT2;HAVE_XAUDIO;HAVE_RVORBIS;HAVE_RMODTRACKER;HAVE_DR_FLAC;HAVE_DR_MP3;HAVE_DIRECTX;HAVE_NETWORKING;HAVE_IFINFO;HAVE_NETWORK_CMD;HAVE_NETPLAYDISCOVERY;HAVE_COMMAND;HAVE_STDIN_CMD;HAVE_THREADS;_CRT_NONSTDC_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;HAVE_OVERLAY;HAVE_RGUI;HAVE_MENU;HAVE_GFX_WIDGETS;HAVE_CONFIGFILE;HAVE_PATCH;HAVE_DSP_FILTER;HAVE_VIDEO_FILTER;HAVE_REWIND;HAVE_SCREENSHOTS;HAVE_CHEATS;HAVE_MATERIALUI;HAVE_LIBRETRODB;HAVE_AUDIOMIXER;HAVE_RWAV;HAVE_STB_FONT;HAVE_STATIC_DUMMY;HAVE_STATIC_VIDEO_FILTERS;HAVE_STATIC_AUDIO_FILTERS;HAVE_CLOUDSYNC;_SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING</PreprocessorDefinitions>
+       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+     </ClCompile>
+   </ItemDefinitionGroup>
+@@ -178,7 +178,7 @@
+       <AdditionalIncludeDirectories>$(MSBuildProjectDirectory);$(MSBuildProjectDirectory)\..\..\..\;$(MSBuildProjectDirectory)\..\..\..\deps\rcheevos\include;$(MSBuildProjectDirectory)\..\..\..\libretro-common\include;$(MSBuildProjectDirectory)\..\..\..\libretro-common\include\compat\zlib;$(MSBuildProjectDirectory)\..\..\..\deps;$(MSBuildProjectDirectory)\..\..\..\deps\zstd\lib;$(MSBuildProjectDirectory)\..\..\..\deps\zstd\common;$(MSBuildProjectDirectory)\..\..\..\deps\zstd\compress;$(MSBuildProjectDirectory)\..\..\..\deps\zstd\decompress;$(MSBuildProjectDirectory)\..\..\..\deps\7zip;$(MSBuildProjectDirectory)\..\..\..\deps\dr;$(MSBuildProjectDirectory)\..\..\..\deps\stb;$(MSBuildProjectDirectory)\..\..\..\deps\glslang;$(MSBuildProjectDirectory)\..\..\..\deps\SPIRV-Cross;$(MSBuildProjectDirectory)\..\..\..\deps\libsmb2\include\smb2;$(MSBuildProjectDirectory)\..\..\..\deps\libsmb2\include;$(MSBuildProjectDirectory)\..\..\..\gfx\include;$(MSBuildProjectDirectory)\..\..\..\gfx\include\MESA;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+       <AdditionalOptions>/bigobj %(AdditionalOptions) /utf-8</AdditionalOptions>
+       <DisableSpecificWarnings>4453;28204</DisableSpecificWarnings>
+-      <PreprocessorDefinitions>WIN32;HAVE_XDELTA;HAVE_MAIN;HAVE_DYNAMIC;HAVE_DYLIB;HAVE_XAUDIO2;RARCH_INTERNAL;HAVE_CC_RESAMPLER;WANT_GLSLANG;HAVE_GLSLANG;HAVE_BUILTINGLSLANG;HAVE_SLANG;HAVE_SPIRV_CROSS;HAVE_ONLINE_UPDATER;HAVE_UPDATE_ASSETS;HAVE_UPDATE_CORES;HAVE_UPDATE_CORE_INFO;HAVE_D3D;HAVE_D3D11;HAVE_D3D12;HAVE_BUILTINSMBCLIENT;HAVE_SMBCLIENT;_U_=/**/;HAVE_FCNTL_H;HAVE_STDINT_H;HAVE_LINGER;NEED_RANDOM;NEED_SRANDOM;NEED_GETLOGIN_R;HAVE_OPENGL;HAVE_GLSL;HAVE_HLSL;RC_DISABLE_LUA;HAVE_CHEEVOS;HAVE_CHD;HAVE_RUNAHEAD;HAVE_GRIFFIN;HAVE_LANGEXTRA;HAVE_RZSTD;HAVE_7ZIP;HAVE_TRANSLATE;HAVE_ACCESSIBILITY;HAVE_XMB;HAVE_OZONE;HAVE_SHADERPIPELINE;HAVE_RPNG;HAVE_RWEBP;HAVE_RDDS;HAVE_CORE_INFO_CACHE;HAVE_RJPEG;HAVE_RBMP;HAVE_RTGA;HAVE_IMAGEVIEWER;NDEBUG;_WINDOWS;%(PreprocessorDefinitions);HAVE_XINPUT;HAVE_XINPUT2;HAVE_XAUDIO;HAVE_RVORBIS;HAVE_RMODTRACKER;HAVE_DR_FLAC;HAVE_DR_MP3;HAVE_DIRECTX;HAVE_NETWORKING;HAVE_IFINFO;HAVE_NETWORK_CMD;HAVE_NETPLAYDISCOVERY;HAVE_COMMAND;HAVE_STDIN_CMD;HAVE_THREADS;_CRT_NONSTDC_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;HAVE_OVERLAY;HAVE_MENU;HAVE_GFX_WIDGETS;HAVE_CONFIGFILE;HAVE_PATCH;HAVE_DSP_FILTER;HAVE_VIDEO_FILTER;HAVE_REWIND;HAVE_SCREENSHOTS;HAVE_CHEATS;HAVE_RGUI;HAVE_MATERIALUI;HAVE_LIBRETRODB;HAVE_AUDIOMIXER;HAVE_RWAV;HAVE_STB_FONT;HAVE_STATIC_DUMMY;HAVE_STATIC_VIDEO_FILTERS;HAVE_STATIC_AUDIO_FILTERS;HAVE_CLOUDSYNC;_SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING</PreprocessorDefinitions>
++      <PreprocessorDefinitions>HAVE_CDROM;WIN32;HAVE_XDELTA;HAVE_MAIN;HAVE_DYNAMIC;HAVE_DYLIB;HAVE_XAUDIO2;RARCH_INTERNAL;HAVE_CC_RESAMPLER;WANT_GLSLANG;HAVE_GLSLANG;HAVE_BUILTINGLSLANG;HAVE_SLANG;HAVE_SPIRV_CROSS;HAVE_ONLINE_UPDATER;HAVE_UPDATE_ASSETS;HAVE_UPDATE_CORES;HAVE_UPDATE_CORE_INFO;HAVE_D3D;HAVE_D3D11;HAVE_D3D12;HAVE_BUILTINSMBCLIENT;HAVE_SMBCLIENT;_U_=/**/;HAVE_FCNTL_H;HAVE_STDINT_H;HAVE_LINGER;NEED_RANDOM;NEED_SRANDOM;NEED_GETLOGIN_R;HAVE_OPENGL;HAVE_GLSL;HAVE_HLSL;RC_DISABLE_LUA;HAVE_CHEEVOS;HAVE_CHD;HAVE_RUNAHEAD;HAVE_GRIFFIN;HAVE_LANGEXTRA;HAVE_RZSTD;HAVE_7ZIP;HAVE_TRANSLATE;HAVE_ACCESSIBILITY;HAVE_XMB;HAVE_OZONE;HAVE_SHADERPIPELINE;HAVE_RPNG;HAVE_RWEBP;HAVE_RDDS;HAVE_CORE_INFO_CACHE;HAVE_RJPEG;HAVE_RBMP;HAVE_RTGA;HAVE_IMAGEVIEWER;NDEBUG;_WINDOWS;%(PreprocessorDefinitions);HAVE_XINPUT;HAVE_XINPUT2;HAVE_XAUDIO;HAVE_RVORBIS;HAVE_RMODTRACKER;HAVE_DR_FLAC;HAVE_DR_MP3;HAVE_DIRECTX;HAVE_NETWORKING;HAVE_IFINFO;HAVE_NETWORK_CMD;HAVE_NETPLAYDISCOVERY;HAVE_COMMAND;HAVE_STDIN_CMD;HAVE_THREADS;_CRT_NONSTDC_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;HAVE_OVERLAY;HAVE_MENU;HAVE_GFX_WIDGETS;HAVE_CONFIGFILE;HAVE_PATCH;HAVE_DSP_FILTER;HAVE_VIDEO_FILTER;HAVE_REWIND;HAVE_SCREENSHOTS;HAVE_CHEATS;HAVE_RGUI;HAVE_MATERIALUI;HAVE_LIBRETRODB;HAVE_AUDIOMIXER;HAVE_RWAV;HAVE_STB_FONT;HAVE_STATIC_DUMMY;HAVE_STATIC_VIDEO_FILTERS;HAVE_STATIC_AUDIO_FILTERS;HAVE_CLOUDSYNC;_SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING</PreprocessorDefinitions>
+     </ClCompile>
+   </ItemDefinitionGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseANGLE|x64'">
+@@ -193,7 +193,7 @@
+       <AdditionalIncludeDirectories>$(MSBuildProjectDirectory);$(MSBuildProjectDirectory)\..\..\..\;$(MSBuildProjectDirectory)\..\..\..\deps\rcheevos\include;$(MSBuildProjectDirectory)\..\..\..\libretro-common\include;$(MSBuildProjectDirectory)\..\..\..\libretro-common\include\compat\zlib;$(MSBuildProjectDirectory)\..\..\..\deps;$(MSBuildProjectDirectory)\..\..\..\deps\zstd\lib;$(MSBuildProjectDirectory)\..\..\..\deps\zstd\common;$(MSBuildProjectDirectory)\..\..\..\deps\zstd\compress;$(MSBuildProjectDirectory)\..\..\..\deps\zstd\decompress;$(MSBuildProjectDirectory)\..\..\..\deps\7zip;$(MSBuildProjectDirectory)\..\..\..\deps\dr;$(MSBuildProjectDirectory)\..\..\..\deps\stb;$(MSBuildProjectDirectory)\..\..\..\deps\glslang;$(MSBuildProjectDirectory)\..\..\..\deps\SPIRV-Cross;$(MSBuildProjectDirectory)\..\..\..\deps\libsmb2\include\smb2;$(MSBuildProjectDirectory)\..\..\..\deps\libsmb2\include;$(MSBuildProjectDirectory)\..\..\..\deps\stb;$(MSBuildProjectDirectory)\..\..\..\gfx\include;$(MSBuildProjectDirectory)\..\..\..\gfx\include\ANGLE;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+       <AdditionalOptions>/bigobj %(AdditionalOptions) /utf-8</AdditionalOptions>
+       <DisableSpecificWarnings>4453;28204</DisableSpecificWarnings>
+-      <PreprocessorDefinitions>WIN32;HAVE_XDELTA;HAVE_MAIN;HAVE_DYNAMIC;HAVE_DYLIB;HAVE_XAUDIO2;RARCH_INTERNAL;HAVE_CC_RESAMPLER;WANT_GLSLANG;HAVE_GLSLANG;HAVE_BUILTINGLSLANG;HAVE_SLANG;HAVE_SPIRV_CROSS;HAVE_ONLINE_UPDATER;HAVE_UPDATE_ASSETS;HAVE_UPDATE_CORES;HAVE_UPDATE_CORE_INFO;HAVE_D3D;HAVE_D3D11;HAVE_D3D12;HAVE_BUILTINSMBCLIENT;HAVE_SMBCLIENT;_U_=/**/;HAVE_FCNTL_H;HAVE_STDINT_H;HAVE_LINGER;NEED_RANDOM;NEED_SRANDOM;NEED_GETLOGIN_R;RC_DISABLE_LUA;HAVE_CHEEVOS;HAVE_CHD;HAVE_RUNAHEAD;HAVE_GRIFFIN;HAVE_LANGEXTRA;HAVE_RZSTD;HAVE_7ZIP;HAVE_TRANSLATE;HAVE_ACCESSIBILITY;HAVE_XMB;HAVE_OZONE;HAVE_SHADERPIPELINE;HAVE_RPNG;HAVE_RWEBP;HAVE_RDDS;HAVE_CORE_INFO_CACHE;HAVE_RJPEG;HAVE_RBMP;HAVE_RTGA;HAVE_IMAGEVIEWER;NDEBUG;_WINDOWS;%(PreprocessorDefinitions);HAVE_XINPUT;HAVE_XINPUT2;HAVE_XAUDIO;HAVE_RVORBIS;HAVE_RMODTRACKER;HAVE_DR_FLAC;HAVE_DR_MP3;HAVE_DIRECTX;HAVE_NETWORKING;HAVE_IFINFO;HAVE_NETWORK_CMD;HAVE_NETPLAYDISCOVERY;HAVE_COMMAND;HAVE_STDIN_CMD;HAVE_THREADS;_CRT_NONSTDC_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;HAVE_OVERLAY;HAVE_MENU;HAVE_GFX_WIDGETS;HAVE_CONFIGFILE;HAVE_PATCH;HAVE_DSP_FILTER;HAVE_VIDEO_FILTER;HAVE_REWIND;HAVE_SCREENSHOTS;HAVE_CHEATS;HAVE_RGUI;HAVE_MATERIALUI;HAVE_LIBRETRODB;HAVE_AUDIOMIXER;HAVE_RWAV;HAVE_STB_FONT;HAVE_STATIC_DUMMY;HAVE_STATIC_VIDEO_FILTERS;HAVE_STATIC_AUDIO_FILTERS;HAVE_ANGLE;HAVE_OPENGL;HAVE_OPENGLES;HAVE_OPENGLES2;HAVE_GLSL;HAVE_HLSL;HAVE_EGL;HAVE_CLOUDSYNC;_SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING</PreprocessorDefinitions>
++      <PreprocessorDefinitions>HAVE_CDROM;WIN32;HAVE_XDELTA;HAVE_MAIN;HAVE_DYNAMIC;HAVE_DYLIB;HAVE_XAUDIO2;RARCH_INTERNAL;HAVE_CC_RESAMPLER;WANT_GLSLANG;HAVE_GLSLANG;HAVE_BUILTINGLSLANG;HAVE_SLANG;HAVE_SPIRV_CROSS;HAVE_ONLINE_UPDATER;HAVE_UPDATE_ASSETS;HAVE_UPDATE_CORES;HAVE_UPDATE_CORE_INFO;HAVE_D3D;HAVE_D3D11;HAVE_D3D12;HAVE_BUILTINSMBCLIENT;HAVE_SMBCLIENT;_U_=/**/;HAVE_FCNTL_H;HAVE_STDINT_H;HAVE_LINGER;NEED_RANDOM;NEED_SRANDOM;NEED_GETLOGIN_R;RC_DISABLE_LUA;HAVE_CHEEVOS;HAVE_CHD;HAVE_RUNAHEAD;HAVE_GRIFFIN;HAVE_LANGEXTRA;HAVE_RZSTD;HAVE_7ZIP;HAVE_TRANSLATE;HAVE_ACCESSIBILITY;HAVE_XMB;HAVE_OZONE;HAVE_SHADERPIPELINE;HAVE_RPNG;HAVE_RWEBP;HAVE_RDDS;HAVE_CORE_INFO_CACHE;HAVE_RJPEG;HAVE_RBMP;HAVE_RTGA;HAVE_IMAGEVIEWER;NDEBUG;_WINDOWS;%(PreprocessorDefinitions);HAVE_XINPUT;HAVE_XINPUT2;HAVE_XAUDIO;HAVE_RVORBIS;HAVE_RMODTRACKER;HAVE_DR_FLAC;HAVE_DR_MP3;HAVE_DIRECTX;HAVE_NETWORKING;HAVE_IFINFO;HAVE_NETWORK_CMD;HAVE_NETPLAYDISCOVERY;HAVE_COMMAND;HAVE_STDIN_CMD;HAVE_THREADS;_CRT_NONSTDC_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;HAVE_OVERLAY;HAVE_MENU;HAVE_GFX_WIDGETS;HAVE_CONFIGFILE;HAVE_PATCH;HAVE_DSP_FILTER;HAVE_VIDEO_FILTER;HAVE_REWIND;HAVE_SCREENSHOTS;HAVE_CHEATS;HAVE_RGUI;HAVE_MATERIALUI;HAVE_LIBRETRODB;HAVE_AUDIOMIXER;HAVE_RWAV;HAVE_STB_FONT;HAVE_STATIC_DUMMY;HAVE_STATIC_VIDEO_FILTERS;HAVE_STATIC_AUDIO_FILTERS;HAVE_ANGLE;HAVE_OPENGL;HAVE_OPENGLES;HAVE_OPENGLES2;HAVE_GLSL;HAVE_HLSL;HAVE_EGL;HAVE_CLOUDSYNC;_SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING</PreprocessorDefinitions>
+     </ClCompile>
+   </ItemDefinitionGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DebugANGLE|ARM'">
+@@ -208,7 +208,7 @@
+       <AdditionalIncludeDirectories>$(MSBuildProjectDirectory);$(MSBuildProjectDirectory)\..\..\..\;$(MSBuildProjectDirectory)\..\..\..\deps\rcheevos\include;$(MSBuildProjectDirectory)\..\..\..\libretro-common\include;$(MSBuildProjectDirectory)\..\..\..\libretro-common\include\compat\zlib;$(MSBuildProjectDirectory)\..\..\..\deps;$(MSBuildProjectDirectory)\..\..\..\deps\zstd\lib;$(MSBuildProjectDirectory)\..\..\..\deps\zstd\common;$(MSBuildProjectDirectory)\..\..\..\deps\zstd\compress;$(MSBuildProjectDirectory)\..\..\..\deps\zstd\decompress;$(MSBuildProjectDirectory)\..\..\..\deps\7zip;$(MSBuildProjectDirectory)\..\..\..\deps\dr;$(MSBuildProjectDirectory)\..\..\..\deps\stb;$(MSBuildProjectDirectory)\..\..\..\deps\glslang;$(MSBuildProjectDirectory)\..\..\..\deps\SPIRV-Cross;$(MSBuildProjectDirectory)\..\..\..\deps\stb;$(MSBuildProjectDirectory)\..\..\..\gfx\include;$(MSBuildProjectDirectory)\..\..\..\gfx\include\ANGLE;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+       <AdditionalOptions>/bigobj %(AdditionalOptions) /utf-8</AdditionalOptions>
+       <DisableSpecificWarnings>4453;28204</DisableSpecificWarnings>
+-      <PreprocessorDefinitions>WIN32;HAVE_MAIN;HAVE_DYNAMIC;HAVE_DYLIB;HAVE_XAUDIO2;RARCH_INTERNAL;HAVE_CC_RESAMPLER;WANT_GLSLANG;HAVE_GLSLANG;HAVE_BUILTINGLSLANG;HAVE_SLANG;HAVE_SPIRV_CROSS;HAVE_ONLINE_UPDATER;HAVE_UPDATE_ASSETS;HAVE_UPDATE_CORES;HAVE_UPDATE_CORE_INFO;HAVE_D3D;HAVE_D3D11;HAVE_D3D12;RC_DISABLE_LUA;HAVE_CHEEVOS;HAVE_CHD;HAVE_RUNAHEAD;HAVE_GRIFFIN;HAVE_LANGEXTRA;HAVE_RZSTD;HAVE_7ZIP;HAVE_TRANSLATE;HAVE_ACCESSIBILITY;HAVE_RPNG;HAVE_RWEBP;HAVE_RDDS;HAVE_CORE_INFO_CACHE;HAVE_RJPEG;HAVE_RBMP;HAVE_RTGA;HAVE_IMAGEVIEWER;HAVE_XMB;HAVE_OZONE;HAVE_SHADERPIPELINE;DEBUG;_DEBUG;_WINDOWS;%(PreprocessorDefinitions);HAVE_XINPUT;HAVE_XINPUT2;HAVE_XAUDIO;HAVE_RVORBIS;HAVE_RMODTRACKER;HAVE_DR_FLAC;HAVE_DR_MP3;HAVE_DIRECTX;HAVE_NETWORKING;HAVE_IFINFO;HAVE_NETWORK_CMD;HAVE_NETPLAYDISCOVERY;HAVE_COMMAND;HAVE_STDIN_CMD;HAVE_THREADS;_CRT_NONSTDC_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;HAVE_OVERLAY;HAVE_RGUI;HAVE_MENU;HAVE_GFX_WIDGETS;HAVE_CONFIGFILE;HAVE_PATCH;HAVE_DSP_FILTER;HAVE_VIDEO_FILTER;HAVE_REWIND;HAVE_SCREENSHOTS;HAVE_CHEATS;HAVE_MATERIALUI;HAVE_LIBRETRODB;HAVE_AUDIOMIXER;HAVE_RWAV;HAVE_STB_FONT;HAVE_STATIC_DUMMY;HAVE_STATIC_VIDEO_FILTERS;HAVE_STATIC_AUDIO_FILTERS;HAVE_ANGLE;HAVE_OPENGL;HAVE_OPENGLES;HAVE_OPENGLES2;HAVE_GLSL;HAVE_CLOUDSYNC;_SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING</PreprocessorDefinitions>
++      <PreprocessorDefinitions>HAVE_CDROM;WIN32;HAVE_MAIN;HAVE_DYNAMIC;HAVE_DYLIB;HAVE_XAUDIO2;RARCH_INTERNAL;HAVE_CC_RESAMPLER;WANT_GLSLANG;HAVE_GLSLANG;HAVE_BUILTINGLSLANG;HAVE_SLANG;HAVE_SPIRV_CROSS;HAVE_ONLINE_UPDATER;HAVE_UPDATE_ASSETS;HAVE_UPDATE_CORES;HAVE_UPDATE_CORE_INFO;HAVE_D3D;HAVE_D3D11;HAVE_D3D12;RC_DISABLE_LUA;HAVE_CHEEVOS;HAVE_CHD;HAVE_RUNAHEAD;HAVE_GRIFFIN;HAVE_LANGEXTRA;HAVE_RZSTD;HAVE_7ZIP;HAVE_TRANSLATE;HAVE_ACCESSIBILITY;HAVE_RPNG;HAVE_RWEBP;HAVE_RDDS;HAVE_CORE_INFO_CACHE;HAVE_RJPEG;HAVE_RBMP;HAVE_RTGA;HAVE_IMAGEVIEWER;HAVE_XMB;HAVE_OZONE;HAVE_SHADERPIPELINE;DEBUG;_DEBUG;_WINDOWS;%(PreprocessorDefinitions);HAVE_XINPUT;HAVE_XINPUT2;HAVE_XAUDIO;HAVE_RVORBIS;HAVE_RMODTRACKER;HAVE_DR_FLAC;HAVE_DR_MP3;HAVE_DIRECTX;HAVE_NETWORKING;HAVE_IFINFO;HAVE_NETWORK_CMD;HAVE_NETPLAYDISCOVERY;HAVE_COMMAND;HAVE_STDIN_CMD;HAVE_THREADS;_CRT_NONSTDC_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;HAVE_OVERLAY;HAVE_RGUI;HAVE_MENU;HAVE_GFX_WIDGETS;HAVE_CONFIGFILE;HAVE_PATCH;HAVE_DSP_FILTER;HAVE_VIDEO_FILTER;HAVE_REWIND;HAVE_SCREENSHOTS;HAVE_CHEATS;HAVE_MATERIALUI;HAVE_LIBRETRODB;HAVE_AUDIOMIXER;HAVE_RWAV;HAVE_STB_FONT;HAVE_STATIC_DUMMY;HAVE_STATIC_VIDEO_FILTERS;HAVE_STATIC_AUDIO_FILTERS;HAVE_ANGLE;HAVE_OPENGL;HAVE_OPENGLES;HAVE_OPENGLES2;HAVE_GLSL;HAVE_CLOUDSYNC;_SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING</PreprocessorDefinitions>
+     </ClCompile>
+   </ItemDefinitionGroup>
+   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DebugANGLE|x64'">
+@@ -223,7 +223,7 @@
+       <AdditionalIncludeDirectories>$(MSBuildProjectDirectory);$(MSBuildProjectDirectory)\..\..\..\;$(MSBuildProjectDirectory)\..\..\..\deps\rcheevos\include;$(MSBuildProjectDirectory)\..\..\..\libretro-common\include;$(MSBuildProjectDirectory)\..\..\..\libretro-common\include\compat\zlib;$(MSBuildProjectDirectory)\..\..\..\deps;$(MSBuildProjectDirectory)\..\..\..\deps\zstd\lib;$(MSBuildProjectDirectory)\..\..\..\deps\zstd\common;$(MSBuildProjectDirectory)\..\..\..\deps\zstd\compress;$(MSBuildProjectDirectory)\..\..\..\deps\zstd\decompress;$(MSBuildProjectDirectory)\..\..\..\deps\7zip;$(MSBuildProjectDirectory)\..\..\..\deps\dr;$(MSBuildProjectDirectory)\..\..\..\deps\stb;$(MSBuildProjectDirectory)\..\..\..\deps\glslang;$(MSBuildProjectDirectory)\..\..\..\deps\SPIRV-Cross;$(MSBuildProjectDirectory)\..\..\..\deps\libsmb2\include\smb2;$(MSBuildProjectDirectory)\..\..\..\deps\libsmb2\include;$(MSBuildProjectDirectory)\..\..\..\deps\stb;$(MSBuildProjectDirectory)\..\..\..\gfx\include;$(MSBuildProjectDirectory)\..\..\..\gfx\include\ANGLE;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+       <AdditionalOptions>/bigobj %(AdditionalOptions) /utf-8</AdditionalOptions>
+       <DisableSpecificWarnings>4453;28204</DisableSpecificWarnings>
+-      <PreprocessorDefinitions>WIN32;HAVE_XDELTA;HAVE_MAIN;HAVE_DYNAMIC;HAVE_DYLIB;HAVE_XAUDIO2;RARCH_INTERNAL;HAVE_CC_RESAMPLER;WANT_GLSLANG;HAVE_GLSLANG;HAVE_BUILTINGLSLANG;HAVE_SLANG;HAVE_SPIRV_CROSS;HAVE_ONLINE_UPDATER;HAVE_UPDATE_ASSETS;HAVE_UPDATE_CORES;HAVE_UPDATE_CORE_INFO;HAVE_D3D;HAVE_D3D11;HAVE_D3D12;HAVE_BUILTINSMBCLIENT;HAVE_SMBCLIENT;_U_=/**/;HAVE_FCNTL_H;HAVE_STDINT_H;HAVE_LINGER;NEED_RANDOM;NEED_SRANDOM;NEED_GETLOGIN_R;RC_DISABLE_LUA;HAVE_CHEEVOS;HAVE_CHD;HAVE_RUNAHEAD;HAVE_GRIFFIN;HAVE_LANGEXTRA;HAVE_RZSTD;HAVE_7ZIP;HAVE_TRANSLATE;HAVE_ACCESSIBILITY;HAVE_RPNG;HAVE_RWEBP;HAVE_RDDS;HAVE_CORE_INFO_CACHE;HAVE_RJPEG;HAVE_RBMP;HAVE_RTGA;HAVE_IMAGEVIEWER;HAVE_XMB;HAVE_OZONE;HAVE_SHADERPIPELINE;DEBUG;_DEBUG;_WINDOWS;%(PreprocessorDefinitions);HAVE_XINPUT;HAVE_XINPUT2;HAVE_XAUDIO;HAVE_RVORBIS;HAVE_RMODTRACKER;HAVE_DR_FLAC;HAVE_DR_MP3;HAVE_DIRECTX;HAVE_NETWORKING;HAVE_IFINFO;HAVE_NETWORK_CMD;HAVE_NETPLAYDISCOVERY;HAVE_COMMAND;HAVE_STDIN_CMD;HAVE_THREADS;_CRT_NONSTDC_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;HAVE_OVERLAY;HAVE_RGUI;HAVE_MENU;HAVE_GFX_WIDGETS;HAVE_CONFIGFILE;HAVE_PATCH;HAVE_DSP_FILTER;HAVE_VIDEO_FILTER;HAVE_REWIND;HAVE_SCREENSHOTS;HAVE_CHEATS;HAVE_MATERIALUI;HAVE_LIBRETRODB;HAVE_AUDIOMIXER;HAVE_RWAV;HAVE_STB_FONT;HAVE_STATIC_DUMMY;HAVE_STATIC_VIDEO_FILTERS;HAVE_STATIC_AUDIO_FILTERS;HAVE_ANGLE;HAVE_OPENGL;HAVE_OPENGLES;HAVE_OPENGLES2;HAVE_GLSL;HAVE_HLSL;HAVE_CLOUDSYNC;_SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING</PreprocessorDefinitions>
++      <PreprocessorDefinitions>HAVE_CDROM;WIN32;HAVE_XDELTA;HAVE_MAIN;HAVE_DYNAMIC;HAVE_DYLIB;HAVE_XAUDIO2;RARCH_INTERNAL;HAVE_CC_RESAMPLER;WANT_GLSLANG;HAVE_GLSLANG;HAVE_BUILTINGLSLANG;HAVE_SLANG;HAVE_SPIRV_CROSS;HAVE_ONLINE_UPDATER;HAVE_UPDATE_ASSETS;HAVE_UPDATE_CORES;HAVE_UPDATE_CORE_INFO;HAVE_D3D;HAVE_D3D11;HAVE_D3D12;HAVE_BUILTINSMBCLIENT;HAVE_SMBCLIENT;_U_=/**/;HAVE_FCNTL_H;HAVE_STDINT_H;HAVE_LINGER;NEED_RANDOM;NEED_SRANDOM;NEED_GETLOGIN_R;RC_DISABLE_LUA;HAVE_CHEEVOS;HAVE_CHD;HAVE_RUNAHEAD;HAVE_GRIFFIN;HAVE_LANGEXTRA;HAVE_RZSTD;HAVE_7ZIP;HAVE_TRANSLATE;HAVE_ACCESSIBILITY;HAVE_RPNG;HAVE_RWEBP;HAVE_RDDS;HAVE_CORE_INFO_CACHE;HAVE_RJPEG;HAVE_RBMP;HAVE_RTGA;HAVE_IMAGEVIEWER;HAVE_XMB;HAVE_OZONE;HAVE_SHADERPIPELINE;DEBUG;_DEBUG;_WINDOWS;%(PreprocessorDefinitions);HAVE_XINPUT;HAVE_XINPUT2;HAVE_XAUDIO;HAVE_RVORBIS;HAVE_RMODTRACKER;HAVE_DR_FLAC;HAVE_DR_MP3;HAVE_DIRECTX;HAVE_NETWORKING;HAVE_IFINFO;HAVE_NETWORK_CMD;HAVE_NETPLAYDISCOVERY;HAVE_COMMAND;HAVE_STDIN_CMD;HAVE_THREADS;_CRT_NONSTDC_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;HAVE_OVERLAY;HAVE_RGUI;HAVE_MENU;HAVE_GFX_WIDGETS;HAVE_CONFIGFILE;HAVE_PATCH;HAVE_DSP_FILTER;HAVE_VIDEO_FILTER;HAVE_REWIND;HAVE_SCREENSHOTS;HAVE_CHEATS;HAVE_MATERIALUI;HAVE_LIBRETRODB;HAVE_AUDIOMIXER;HAVE_RWAV;HAVE_STB_FONT;HAVE_STATIC_DUMMY;HAVE_STATIC_VIDEO_FILTERS;HAVE_STATIC_AUDIO_FILTERS;HAVE_ANGLE;HAVE_OPENGL;HAVE_OPENGLES;HAVE_OPENGLES2;HAVE_GLSL;HAVE_HLSL;HAVE_CLOUDSYNC;_SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING</PreprocessorDefinitions>
+       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+     </ClCompile>
+   </ItemDefinitionGroup>
+@@ -236,6 +236,8 @@
+   </ItemGroup>
+   <ItemGroup>
+     <ClCompile Include="..\..\..\uwp\uwp_main.cpp" />
++    <ClCompile Include="..\..\..\uwp\uwp_cdrom.cpp" />
++    <ClCompile Include="..\..\..\uwp\uwp_file_redirect.cpp" />
+   </ItemGroup>
+   <ItemGroup>
+     <AppxManifest Include="Package.appxmanifest">
+diff --git a/uwp/uwp_cdrom.cpp b/uwp/uwp_cdrom.cpp
+new file mode 100644
+index 0000000..d9213b7
+--- /dev/null
++++ b/uwp/uwp_cdrom.cpp
+@@ -0,0 +1,311 @@
++/* Reading the disc in an Xbox console's own drive (Dev Mode, UWP).
++ * Copyright (c) 2026 Skitzelles, https://github.com/skitzellez - written for Game Vault.
++ * Free software under the GNU General Public License version 3 or later, like RetroArch itself;
++ * this notice stays in every copy.
++ *
++ * An app on the console is refused every file and volume route to the drive (CreateFile on \\.\X: and the
++ * device requests that go with it). What does open is the drive's device interface through
++ * Windows.Devices.Custom, once the package declares the CD-ROM interface class
++ * ({53f56308-b6bf-11d0-94f2-00a0c91efb8b}) as a DeviceCapability; opened for reading and writing it takes
++ * IOCTL_SCSI_PASS_THROUGH. libretro-common/cdrom/cdrom.c sends all of its commands through
++ * uwp_cdrom_command() below instead of DeviceIoControl.
++ *
++ * RetroArch runs on the window's thread, where waiting for an asynchronous WinRT call is not allowed, so a
++ * worker thread of its own talks to the drive and the caller waits for it. */
++
++#include <winrt/Windows.Devices.Custom.h>
++#include <winrt/Windows.Devices.Enumeration.h>
++#include <winrt/Windows.Foundation.Collections.h>
++#include <winrt/Windows.Foundation.h>
++#include <winrt/Windows.Storage.Streams.h>
++#include <winrt/Windows.Storage.h>
++#include <winrt/Windows.UI.Core.h>
++
++#include <windows.h>
++
++/* From ntddscsi.h, which keeps these away from apps. */
++struct SCSI_PASS_THROUGH
++{
++   USHORT Length;
++   UCHAR ScsiStatus;
++   UCHAR PathId;
++   UCHAR TargetId;
++   UCHAR Lun;
++   UCHAR CdbLength;
++   UCHAR SenseInfoLength;
++   UCHAR DataIn;
++   ULONG DataTransferLength;
++   ULONG TimeOutValue;
++   ULONG_PTR DataBufferOffset;
++   ULONG SenseInfoOffset;
++   UCHAR Cdb[16];
++};
++enum { SCSI_IOCTL_DATA_OUT = 0, SCSI_IOCTL_DATA_IN = 1, SCSI_IOCTL_DATA_UNSPECIFIED = 2 };
++
++#include <algorithm>
++#include <chrono>
++#include <condition_variable>
++#include <cstdarg>
++#include <cstdio>
++#include <string>
++#include <cstring>
++#include <functional>
++#include <mutex>
++#include <thread>
++
++namespace
++{
++   using namespace winrt::Windows::Devices::Custom;
++   using namespace winrt::Windows::Devices::Enumeration;
++   using winrt::Windows::Storage::Streams::Buffer;
++
++   const uint32_t SPT_HEADER = sizeof(SCSI_PASS_THROUGH) + 32;   /* the structure, then room for sense data */
++   const uint32_t MAX_DATA   = 64 * 1024;                        /* one command moves at most this much */
++
++   struct Drive
++   {
++      CustomDevice device{nullptr};
++      Buffer in{SPT_HEADER + MAX_DATA};
++      Buffer out{SPT_HEADER + MAX_DATA};
++      bool tried = false;
++   };
++
++   /* LocalState\uwp_cdrom.log: what was asked of the drive and what it said (the first few hundred lines of
++    * a session), for looking into a disc that does not start. */
++   void drive_log(const char *fmt, ...)
++   {
++      static FILE *f = nullptr;
++      static int lines = 0;
++      static ULONGLONG t0 = 0;
++      if (lines > 600)
++         return;
++      if (!f)
++      {
++         try
++         {
++            std::wstring path = std::wstring(winrt::Windows::Storage::ApplicationData::Current().LocalFolder().Path()) + L"\\uwp_cdrom.log";
++            f = _wfopen(path.c_str(), L"w");
++         }
++         catch (...)
++         {
++         }
++         t0 = GetTickCount64();
++         if (!f)
++         {
++            lines = 1000;
++            return;
++         }
++      }
++      va_list ap;
++      va_start(ap, fmt);
++      fprintf(f, "%7llu ms  ", GetTickCount64() - t0);
++      vfprintf(f, fmt, ap);
++      fputc('\n', f);
++      va_end(ap);
++      fflush(f);
++      lines++;
++   }
++
++   /* One worker thread; jobs are run on it one at a time. */
++   std::mutex              g_lock;        /* one caller at a time */
++   std::mutex              g_job_lock;
++   std::condition_variable g_job_cv;
++   std::function<void()>   g_job;
++   bool                    g_job_done = true;
++   bool                    g_worker_started = false;
++   Drive                  *g_drive = nullptr;   /* used on the worker thread only */
++
++   void worker()
++   {
++      winrt::init_apartment();
++      for (;;)
++      {
++         std::unique_lock<std::mutex> l(g_job_lock);
++         g_job_cv.wait(l, [] { return !g_job_done; });
++         l.unlock();         /* the caller must be able to wait (and look after its window) meanwhile */
++         g_job();
++         l.lock();
++         g_job_done = true;
++         l.unlock();
++         g_job_cv.notify_all();
++      }
++   }
++
++   void run_on_worker(std::function<void()> job)
++   {
++      std::lock_guard<std::mutex> one(g_lock);
++      if (!g_worker_started)
++      {
++         g_worker_started = true;
++         std::thread(worker).detach();
++      }
++      {
++         std::lock_guard<std::mutex> l(g_job_lock);
++         g_job      = std::move(job);
++         g_job_done = false;
++      }
++      g_job_cv.notify_all();
++
++      /* Called on the window's thread (RetroArch's main loop runs there), the wait keeps the window's
++       * events moving: opening the drive does not finish while that thread stands still. */
++      winrt::Windows::UI::Core::CoreWindow window{nullptr};
++      try
++      {
++         window = winrt::Windows::UI::Core::CoreWindow::GetForCurrentThread();
++      }
++      catch (winrt::hresult_error const&)
++      {
++      }
++      std::unique_lock<std::mutex> l(g_job_lock);
++      while (!g_job_cv.wait_for(l, std::chrono::milliseconds(window ? 5 : 1000), [] { return g_job_done; }))
++      {
++         if (!window)
++            continue;
++         l.unlock();
++         try
++         {
++            window.Dispatcher().ProcessEvents(winrt::Windows::UI::Core::CoreProcessEventsOption::ProcessAllIfPresent);
++         }
++         catch (winrt::hresult_error const&)
++         {
++         }
++         l.lock();
++      }
++   }
++
++   /* Worker thread. Opens the drive once; a failed open is tried again on the next call. */
++   bool open_drive()
++   {
++      if (!g_drive)
++         g_drive = new Drive();
++      if (g_drive->device)
++         return true;
++      drive_log("opening the drive");
++      try
++      {
++         const auto found = DeviceInformation::FindAllAsync(
++            L"System.Devices.InterfaceClassGuid:=\"{53f56308-b6bf-11d0-94f2-00a0c91efb8b}\"").get();
++         drive_log("drives found: %u", (unsigned)found.Size());
++         if (found.Size() == 0)
++            return false;
++         g_drive->device = CustomDevice::FromIdAsync(found.GetAt(0).Id(),
++            DeviceAccessMode::ReadWrite, DeviceSharingMode::Shared).get();
++      }
++      catch (winrt::hresult_error const& e)
++      {
++         drive_log("open failed, error %08x", (unsigned)e.code().value);
++         g_drive->device = nullptr;
++      }
++      drive_log(g_drive->device ? "drive open" : "drive did not open");
++      return g_drive->device != nullptr;
++   }
++}
++
++extern "C" int uwp_cdrom_available(void)
++{
++   bool ok = false;
++   run_on_worker([&] { ok = open_drive(); });
++   return ok ? 1 : 0;
++}
++
++/* dir: 0 = no data, 1 = data from the drive, 2 = data to the drive (as CDROM_CMD_Direction).
++ * Returns 0 when the command went through, 1 when not (the convention of cdrom_send_command_*). */
++extern "C" int uwp_cdrom_command(int dir, void *buf, size_t len,
++      unsigned char *cmd, size_t cmd_len, unsigned char *sense, size_t sense_len)
++{
++   int rv = 1;
++   if (len > MAX_DATA || cmd_len > 16)
++      return 1;
++   /* SET CD SPEED: the console's drive refuses it (it picks its own speed), and cdrom.c would try it again
++    * ten times, a second apart, on every open. */
++   if (cmd[0] == 0xBB)
++      return 0;
++   /* READ CD MSF (addresses as minute, second, frame) is refused too, READ CD (sector numbers) is not:
++    * the one is rewritten as the other. Sector number = (minute * 60 + second) * 75 + frame - 150. */
++   unsigned char read_cd[12];
++   if (cmd[0] == 0xB9 && cmd_len == 12)
++   {
++      const int start = (cmd[3] * 60 + cmd[4]) * 75 + cmd[5] - 150;
++      const int end   = (cmd[6] * 60 + cmd[7]) * 75 + cmd[8] - 150;
++      const int count = end - start;
++      if (start < 0 || count <= 0)
++         return 1;
++      read_cd[0]  = 0xBE;
++      read_cd[1]  = cmd[1];
++      read_cd[2]  = (unsigned char)(start >> 24);
++      read_cd[3]  = (unsigned char)(start >> 16);
++      read_cd[4]  = (unsigned char)(start >> 8);
++      read_cd[5]  = (unsigned char)start;
++      read_cd[6]  = (unsigned char)(count >> 16);
++      read_cd[7]  = (unsigned char)(count >> 8);
++      read_cd[8]  = (unsigned char)count;
++      read_cd[9]  = cmd[9];
++      read_cd[10] = cmd[10];
++      read_cd[11] = cmd[11];
++      cmd         = read_cd;
++   }
++
++   run_on_worker([&] {
++      if (!open_drive())
++         return;
++
++      SCSI_PASS_THROUGH spt{};
++      spt.Length             = sizeof(SCSI_PASS_THROUGH);
++      spt.CdbLength          = (UCHAR)cmd_len;
++      spt.SenseInfoLength    = 32;
++      spt.DataIn             = dir == 1 ? SCSI_IOCTL_DATA_IN : dir == 2 ? SCSI_IOCTL_DATA_OUT : SCSI_IOCTL_DATA_UNSPECIFIED;
++      spt.DataTransferLength = dir == 0 ? 0 : (ULONG)len;
++      spt.TimeOutValue       = 20;
++      spt.DataBufferOffset   = SPT_HEADER;
++      spt.SenseInfoOffset    = sizeof(SCSI_PASS_THROUGH);
++      memcpy(spt.Cdb, cmd, cmd_len);
++
++      uint8_t *p = g_drive->in.data();
++      memset(p, 0, SPT_HEADER);
++      memcpy(p, &spt, sizeof(spt));
++      if (dir == 2 && buf)
++         memcpy(p + SPT_HEADER, buf, len);
++      g_drive->in.Length(SPT_HEADER + (dir == 2 ? (uint32_t)len : (dir == 1 ? (uint32_t)len : 0)));
++
++      try
++      {
++         const uint32_t n = g_drive->device.SendIOControlAsync(
++            IOControlCode(0x04 /* IOCTL_SCSI_BASE */, 0x401, IOControlAccessMode::ReadWrite, IOControlBufferingMethod::Buffered),
++            g_drive->in, g_drive->out).get();
++         if (n < sizeof(SCSI_PASS_THROUGH))
++            return;
++         const uint8_t *q = g_drive->out.data();
++         memcpy(&spt, q, sizeof(spt));
++         if (sense && sense_len)
++         {
++            memset(sense, 0, sense_len);
++            if (n >= SPT_HEADER)
++               memcpy(sense, q + sizeof(SCSI_PASS_THROUGH), std::min<size_t>(sense_len, 32));
++         }
++         if (spt.ScsiStatus != 0)
++         {
++            const uint8_t *sn = q + sizeof(SCSI_PASS_THROUGH);
++            drive_log("command %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x, %u bytes: status %02x, sense %x/%02x/%02x",
++               cmd[0], cmd[1], cmd[2], cmd[3], cmd[4], cmd[5], cmd[6], cmd[7], cmd[8], cmd[9], (unsigned)len,
++               spt.ScsiStatus, sn[2] & 15, sn[12], sn[13]);
++            return;
++         }
++         drive_log("command %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x, %u bytes: ok, %u came back",
++            cmd[0], cmd[1], cmd[2], cmd[3], cmd[4], cmd[5], cmd[6], cmd[7], cmd[8], cmd[9], (unsigned)len,
++            (unsigned)spt.DataTransferLength);
++         if (dir == 1 && buf)
++         {
++            const uint32_t moved = std::min<uint32_t>({(uint32_t)spt.DataTransferLength, (uint32_t)len,
++               n > SPT_HEADER ? n - SPT_HEADER : 0u});
++            memcpy(buf, q + SPT_HEADER, moved);
++         }
++         rv = 0;
++      }
++      catch (winrt::hresult_error const&)
++      {
++         /* the drive went away (console resumed, disc tray): open it again next time */
++         g_drive->device = nullptr;
++      }
++   });
++   return rv;
++}
+diff --git a/uwp/uwp_file_redirect.cpp b/uwp/uwp_file_redirect.cpp
+new file mode 100644
+index 0000000..8a043a8
+--- /dev/null
++++ b/uwp/uwp_file_redirect.cpp
+@@ -0,0 +1,329 @@
++/* Copyright (c) 2026 Skitzelles - part of Game Vault, https://github.com/skitzellez/xbox-game-vault
++ * GPL-3.0-or-later, like RetroArch.
++ *
++ * Emulator cores open game files with the C library (fopen and friends), which ends in CreateFileW.
++ * In a UWP app that direct call only works where the app container itself has rights: on an NTFS drive
++ * that was given "ALL APPLICATION PACKAGES" access. On a FAT32 or exFAT stick, or an NTFS one that was
++ * not prepared, it fails with "access denied" although the user allowed file system access
++ * (broadFileSystemAccess): that permission is honoured only by the *FromApp functions, which go through
++ * the file broker when the direct call is refused and are otherwise the same call.
++ *
++ * So the import tables of the C runtime and of every core that is loaded are pointed at the FromApp
++ * versions. They take the same arguments, and where the direct call is allowed they behave exactly as
++ * before. Then any USB drive works for every core, as it already did for Game Vault and xemu.
++ */
++#include <windows.h>
++#include <fileapifromapp.h>
++#include <memoryapi.h>
++#include <stdlib.h>
++#include <string.h>
++#include <stdio.h>
++#include <string>
++#include <winrt/Windows.Storage.h>
++
++extern "C" void RARCH_LOG_uwp_redirect(const char *what, unsigned count);
++
++namespace {
++
++/* "\\?\F:\..." (the long-path form some cores use) is refused by the broker; the plain path works */
++static LPCWSTR Plain(LPCWSTR name)
++{
++   if (name && name[0] == L'\\' && name[1] == L'\\' && name[2] == L'?' && name[3] == L'\\' && name[4] &&
++         name[5] == L':')
++      return name + 4;
++   return name;
++}
++
++DWORD WINAPI GetFileAttributesW_FromApp(LPCWSTR name)
++{
++   WIN32_FILE_ATTRIBUTE_DATA data;
++   if (!GetFileAttributesExFromAppW(Plain(name), GetFileExInfoStandard, &data))
++      return INVALID_FILE_ATTRIBUTES;
++   return data.dwFileAttributes;
++}
++
++wchar_t *Widen(LPCSTR s)
++{
++   if (!s)
++      return NULL;
++   int n = MultiByteToWideChar(CP_ACP, 0, s, -1, NULL, 0);
++   wchar_t *w = (wchar_t*)malloc(n * sizeof(wchar_t));
++   if (w)
++      MultiByteToWideChar(CP_ACP, 0, s, -1, w, n);
++   return w;
++}
++
++/* CreateFileFromAppW, and when the file broker refuses the call's extras (FAT32 / exFAT sticks are opened
++ * through the broker, which answers ERROR_INVALID_PARAMETER for an inheritable handle and for some flags; the
++ * C runtime passes both, and fopen then fails with errno 22) the same open again without them. */
++/* The first failed opens, with path and error, go to LocalState\uwp_redirect.log (for bug reports). */
++static void Note(LPCWSTR what, LPCWSTR name, DWORD err)
++{
++   static LONG told;
++   static wchar_t logPath[MAX_PATH + 64];
++   if (!name || InterlockedIncrement(&told) > 50)
++      return;
++   if (!logPath[0])
++   {
++      try
++      {
++         std::wstring dir(winrt::Windows::Storage::ApplicationData::Current().LocalFolder().Path());
++         wcsncpy_s(logPath, (dir + L"\\uwp_redirect.log").c_str(), _TRUNCATE);
++      }
++      catch (...)
++      {
++         return;
++      }
++   }
++   HANDLE f = CreateFile2FromAppW(logPath, FILE_APPEND_DATA, FILE_SHARE_READ, OPEN_ALWAYS, NULL);
++   if (f == INVALID_HANDLE_VALUE)
++      return;
++   char line[1200];
++   int len = snprintf(line, sizeof(line), "%ls failed (error %lu): %ls\r\n", what, err, name);
++   DWORD wrote;
++   if (len > 0)
++      WriteFile(f, line, (DWORD)len, &wrote, NULL);
++   CloseHandle(f);
++}
++
++static HANDLE CreateFileW_FromApp_Try(LPCWSTR name, DWORD access, DWORD share, LPSECURITY_ATTRIBUTES sa,
++      DWORD disposition, DWORD flags, HANDLE templ);
++
++HANDLE WINAPI CreateFileW_FromApp(LPCWSTR name, DWORD access, DWORD share, LPSECURITY_ATTRIBUTES sa,
++      DWORD disposition, DWORD flags, HANDLE templ)
++{
++   name     = Plain(name);
++   HANDLE h = CreateFileW_FromApp_Try(name, access, share, sa, disposition, flags, templ);
++   if (h == INVALID_HANDLE_VALUE)
++   {
++      DWORD err = GetLastError();
++      wchar_t what[160];
++      swprintf_s(what, L"CreateFileW access %08lx share %lx disposition %lu flags %08lx sa %d", access, share,
++            disposition, flags, sa ? 1 : 0);
++      Note(what, name, err);
++      SetLastError(err);
++   }
++   return h;
++}
++
++static HANDLE CreateFileW_FromApp_Try(LPCWSTR name, DWORD access, DWORD share, LPSECURITY_ATTRIBUTES sa,
++      DWORD disposition, DWORD flags, HANDLE templ)
++{
++   HANDLE h = CreateFileFromAppW(name, access, share, sa, disposition, flags, templ);
++   if (h != INVALID_HANDLE_VALUE)
++      return h;
++   /* the broker refuses security attributes (an inheritable handle) with error 4252 or 87: try without */
++   if (sa)
++   {
++      h = CreateFileFromAppW(name, access, share, NULL, disposition, flags, templ);
++      if (h != INVALID_HANDLE_VALUE)
++         return h;
++   }
++   if (GetLastError() != ERROR_INVALID_PARAMETER)
++      return h;
++   h = CreateFileFromAppW(name, access, share, NULL, disposition, flags, templ);
++   if (h != INVALID_HANDLE_VALUE || GetLastError() != ERROR_INVALID_PARAMETER)
++      return h;
++   /* attributes and the access-pattern hints only */
++   DWORD plain = flags & (0xFFFF | FILE_FLAG_SEQUENTIAL_SCAN | FILE_FLAG_RANDOM_ACCESS | FILE_FLAG_BACKUP_SEMANTICS);
++   return CreateFileFromAppW(name, access, share, NULL, disposition, plain, NULL);
++}
++
++HANDLE WINAPI CreateFile2_FromApp(LPCWSTR name, DWORD access, DWORD share, DWORD disposition,
++      LPCREATEFILE2_EXTENDED_PARAMETERS ext)
++{
++   name     = Plain(name);
++   HANDLE h = CreateFile2FromAppW(name, access, share, disposition, ext);
++   if (h == INVALID_HANDLE_VALUE && ext && ext->lpSecurityAttributes)
++   {
++      /* the broker refuses security attributes: try without them */
++      CREATEFILE2_EXTENDED_PARAMETERS nosa = *ext;
++      nosa.lpSecurityAttributes = NULL;
++      h = CreateFile2FromAppW(name, access, share, disposition, &nosa);
++   }
++   if (h != INVALID_HANDLE_VALUE || GetLastError() != ERROR_INVALID_PARAMETER || !ext)
++   {
++      if (h == INVALID_HANDLE_VALUE)
++      {
++         DWORD err = GetLastError();
++         Note(L"CreateFile2", name, err);
++         SetLastError(err);
++      }
++      return h;
++   }
++   CREATEFILE2_EXTENDED_PARAMETERS plain = *ext;
++   plain.lpSecurityAttributes = NULL;
++   plain.hTemplateFile        = NULL;
++   plain.dwSecurityQosFlags   = 0;
++   plain.dwFileFlags         &= FILE_FLAG_SEQUENTIAL_SCAN | FILE_FLAG_RANDOM_ACCESS | FILE_FLAG_BACKUP_SEMANTICS;
++   return CreateFile2FromAppW(name, access, share, disposition, &plain);
++}
++
++HANDLE WINAPI CreateFileA_FromApp(LPCSTR name, DWORD access, DWORD share, LPSECURITY_ATTRIBUTES sa,
++      DWORD disposition, DWORD flags, HANDLE templ)
++{
++   wchar_t *w = Widen(name);
++   HANDLE h   = CreateFileW_FromApp(w, access, share, sa, disposition, flags, templ);
++   DWORD err  = GetLastError();
++   free(w);
++   SetLastError(err);
++   return h;
++}
++
++DWORD WINAPI GetFileAttributesA_FromApp(LPCSTR name)
++{
++   wchar_t *w = Widen(name);
++   DWORD a    = GetFileAttributesW_FromApp(w);
++   DWORD err  = GetLastError();
++   free(w);
++   SetLastError(err);
++   return a;
++}
++
++BOOL WINAPI GetFileAttributesExW_FromApp(LPCWSTR name, GET_FILEEX_INFO_LEVELS level, LPVOID info)
++{
++   return GetFileAttributesExFromAppW(Plain(name), level, info);
++}
++
++HANDLE WINAPI FindFirstFileExW_FromApp(LPCWSTR name, FINDEX_INFO_LEVELS level, LPVOID data,
++      FINDEX_SEARCH_OPS op, LPVOID filter, DWORD flags)
++{
++   return FindFirstFileExFromAppW(Plain(name), level, data, op, filter, flags);
++}
++
++HANDLE WINAPI FindFirstFileW_FromApp(LPCWSTR name, LPWIN32_FIND_DATAW data)
++{
++   return FindFirstFileExFromAppW(Plain(name), FindExInfoStandard, data, FindExSearchNameMatch, NULL, 0);
++}
++
++BOOL WINAPI SetFileAttributesW_FromApp(LPCWSTR name, DWORD attributes)
++{
++   return SetFileAttributesFromAppW(Plain(name), attributes);
++}
++
++/* Saving through a temporary file and renaming it over the old one (save files, states, memory cards, the
++ * settings). MoveFileFromAppW never replaces, so an existing target is replaced with ReplaceFileFromAppW, or
++ * deleted first when that is refused; another drive means copy and delete, as MOVEFILE_COPY_ALLOWED asks. */
++BOOL WINAPI MoveFileExW_FromApp(LPCWSTR from, LPCWSTR to, DWORD flags)
++{
++   from = Plain(from);
++   to   = Plain(to);
++   if (!to)
++      return DeleteFileFromAppW(from);
++   if (MoveFileFromAppW(from, to))
++      return TRUE;
++   DWORD err = GetLastError();
++   if ((flags & MOVEFILE_REPLACE_EXISTING) && (err == ERROR_ALREADY_EXISTS || err == ERROR_FILE_EXISTS))
++   {
++      if (ReplaceFileFromAppW(to, from, NULL, REPLACEFILE_IGNORE_MERGE_ERRORS, NULL, NULL))
++         return TRUE;
++      if (DeleteFileFromAppW(to) && MoveFileFromAppW(from, to))
++         return TRUE;
++      err = GetLastError();
++   }
++   else if ((flags & MOVEFILE_COPY_ALLOWED) && err == ERROR_NOT_SAME_DEVICE)
++   {
++      if (CopyFileFromAppW(from, to, !(flags & MOVEFILE_REPLACE_EXISTING)) && DeleteFileFromAppW(from))
++         return TRUE;
++      err = GetLastError();
++   }
++   SetLastError(err);
++   return FALSE;
++}
++
++BOOL WINAPI MoveFileW_FromApp(LPCWSTR from, LPCWSTR to)
++{
++   return MoveFileExW_FromApp(from, to, MOVEFILE_COPY_ALLOWED);
++}
++
++BOOL WINAPI ReplaceFileW_FromApp(LPCWSTR replaced, LPCWSTR replacement, LPCWSTR backup, DWORD flags,
++      LPVOID exclude, LPVOID reserved)
++{
++   return ReplaceFileFromAppW(Plain(replaced), Plain(replacement), Plain(backup), flags, exclude, reserved);
++}
++
++struct Redirect
++{
++   const char *name;
++   void *to;
++};
++
++const Redirect kRedirects[] = {
++   { "CreateFileW",          (void*)CreateFileW_FromApp },
++   { "CreateFile2",          (void*)CreateFile2_FromApp },
++   { "CreateFileA",          (void*)CreateFileA_FromApp },
++   { "GetFileAttributesExW", (void*)GetFileAttributesExW_FromApp },
++   { "GetFileAttributesW",   (void*)GetFileAttributesW_FromApp },
++   { "GetFileAttributesA",   (void*)GetFileAttributesA_FromApp },
++   { "FindFirstFileExW",     (void*)FindFirstFileExW_FromApp },
++   { "FindFirstFileW",       (void*)FindFirstFileW_FromApp },
++   { "CreateDirectoryW",     (void*)CreateDirectoryFromAppW },
++   { "DeleteFileW",          (void*)DeleteFileFromAppW },
++   { "RemoveDirectoryW",     (void*)RemoveDirectoryFromAppW },
++   { "SetFileAttributesW",   (void*)SetFileAttributesW_FromApp },
++   { "MoveFileExW",          (void*)MoveFileExW_FromApp },
++   { "MoveFileW",            (void*)MoveFileW_FromApp },
++   { "ReplaceFileW",         (void*)ReplaceFileW_FromApp },
++};
++
++} // namespace
++
++/* Points the module's imports of the functions above at the FromApp versions. Returns how many. */
++extern "C" unsigned uwp_redirect_file_apis(void *module)
++{
++   unsigned count = 0;
++   BYTE *base     = (BYTE*)module;
++   if (!base)
++      return 0;
++   IMAGE_DOS_HEADER *dos = (IMAGE_DOS_HEADER*)base;
++   if (dos->e_magic != IMAGE_DOS_SIGNATURE)
++      return 0;
++   IMAGE_NT_HEADERS *nt = (IMAGE_NT_HEADERS*)(base + dos->e_lfanew);
++   IMAGE_DATA_DIRECTORY dir = nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT];
++   if (!dir.VirtualAddress)
++      return 0;
++   for (IMAGE_IMPORT_DESCRIPTOR *imp = (IMAGE_IMPORT_DESCRIPTOR*)(base + dir.VirtualAddress);
++         imp->Name; imp++)
++   {
++      IMAGE_THUNK_DATA *thunk = (IMAGE_THUNK_DATA*)(base + imp->FirstThunk);
++      IMAGE_THUNK_DATA *names = (IMAGE_THUNK_DATA*)(base +
++            (imp->OriginalFirstThunk ? imp->OriginalFirstThunk : imp->FirstThunk));
++      for (; names->u1.AddressOfData; names++, thunk++)
++      {
++         if (IMAGE_SNAP_BY_ORDINAL(names->u1.Ordinal))
++            continue;
++         const char *fn = (const char*)((IMAGE_IMPORT_BY_NAME*)(base + names->u1.AddressOfData))->Name;
++         for (const Redirect &r : kRedirects)
++         {
++            if (strcmp(fn, r.name) || thunk->u1.Function == (ULONG_PTR)r.to)
++               continue;
++            ULONG old;
++            if (VirtualProtectFromApp(&thunk->u1.Function, sizeof(thunk->u1.Function),
++                     PAGE_READWRITE, &old))
++            {
++               thunk->u1.Function = (ULONG_PTR)r.to;
++               VirtualProtectFromApp(&thunk->u1.Function, sizeof(thunk->u1.Function), old, &old);
++               count++;
++            }
++            break;
++         }
++      }
++   }
++   return count;
++}
++
++/* The C runtime (fopen, stat, opendir in every core) and RetroArch itself, once at start-up. */
++extern "C" void uwp_redirect_file_apis_startup(void)
++{
++   static const wchar_t *const modules[] = {
++      L"ucrtbase.dll", L"ucrtbased.dll", L"msvcrt.dll", NULL
++   };
++   unsigned n = uwp_redirect_file_apis(GetModuleHandleW(NULL));
++   for (int i = 0; modules[i]; i++)
++   {
++      HMODULE m = GetModuleHandleW(modules[i]);
++      if (m)
++         n += uwp_redirect_file_apis(m);
++   }
++   RARCH_LOG_uwp_redirect("C runtime and RetroArch", n);
++}
+diff --git a/uwp/uwp_main.cpp b/uwp/uwp_main.cpp
+index 9eb98f8..dc67968 100644
+--- a/uwp/uwp_main.cpp
++++ b/uwp/uwp_main.cpp
+@@ -50,6 +50,8 @@
+ #include "../frontend/frontend.h"
+ #include "../input/input_keymaps.h"
+ #include "../verbosity.h"
++#include "../content.h"
++#include "../tasks/task_content.h"
+ #include "uwp_func.h"
+ #include "uwp_async.h"
+ #include <compat/strl.h>
+@@ -296,8 +298,16 @@ App::App() :
+ }
+ 
+ /* The first method called when the IFrameworkView is being created. */
++extern "C" void uwp_redirect_file_apis_startup(void);
++extern "C" void RARCH_LOG_uwp_redirect(const char *what, unsigned count)
++{
++   RARCH_LOG("[UWP] File access through the broker (any USB drive): %s, %u imports.\n", what, count);
++}
++
+ void App::Initialize(CoreApplicationView const& applicationView)
+ {
++   uwp_redirect_file_apis_startup();
++
+    /* Register event handlers for app lifecycle. This example
+     * includes Activated, so that we can make the CoreWindow active and start
+     * rendering on the window. */
+@@ -404,6 +414,202 @@ void App::Uninitialize()
+    }
+ }
+ 
++/* Game Vault keeps BIOS files, save files and states on the games USB drive, in "<drive>\Game Vault", and
++ * sends that folder as "home" with every game. The first time, what RetroArch had in its own storage is moved
++ * there (a file already on the drive is left alone), and RetroArch's system, save and state folders are pointed
++ * at it. A game started without "home" uses RetroArch's own folders again, so a stick that is no longer plugged
++ * in is never looked for. */
++static std::string s_home;
++/* The frame-rate display: Game Vault sends "fps=1" while it is on. It is turned off again
++ * only when it was Game Vault that turned it on (LocalState\gamevault_fps.on), so a choice made in RetroArch's
++ * own menu is left alone. */
++static bool s_fps;
++
++/* "true" / "false" for video_fps_show, or empty when nothing changes */
++static std::string FpsChange()
++{
++   std::wstring mark = std::wstring(winrt::Windows::Storage::ApplicationData::Current().LocalFolder().Path()) +
++         L"\\gamevault_fps.on";
++   WIN32_FILE_ATTRIBUTE_DATA d;
++   bool marked = GetFileAttributesExFromAppW(mark.c_str(), GetFileExInfoStandard, &d) != 0;
++   if (s_fps && !marked)
++   {
++      HANDLE h = CreateFile2FromAppW(mark.c_str(), GENERIC_WRITE, 0, CREATE_ALWAYS, NULL);
++      if (h != INVALID_HANDLE_VALUE)
++         CloseHandle(h);
++   }
++   else if (!s_fps && marked)
++   {
++      DeleteFileFromAppW(mark.c_str());
++      return "false";
++   }
++   return s_fps ? "true" : std::string();
++}
++static const char *const kHomeFolders[3][3] = {
++   /* setting, folder in "home", RetroArch's own folder */
++   { "system_directory",    "bios",   "system" },
++   { "savefile_directory",  "saves",  "saves" },
++   { "savestate_directory", "states", "states" },
++};
++
++static std::string LocalStateDir()
++{
++   return winrt::to_string(winrt::Windows::Storage::ApplicationData::Current().LocalFolder().Path());
++}
++
++static bool UnderLocalState(const std::string &path)
++{
++   std::string own = LocalStateDir();
++   return !path.empty() && _strnicmp(path.c_str(), own.c_str(), own.size()) == 0;
++}
++
++static void MoveTreeToHome(const std::wstring &from, const std::wstring &to)
++{
++   WIN32_FIND_DATAW fd;
++   HANDLE h = FindFirstFileExFromAppW((from + L"\\*").c_str(), FindExInfoBasic, &fd, FindExSearchNameMatch,
++         NULL, 0);
++   if (h == INVALID_HANDLE_VALUE)
++      return;
++   CreateDirectoryFromAppW(to.c_str(), NULL);
++   do
++   {
++      std::wstring name = fd.cFileName;
++      if (name == L"." || name == L"..")
++         continue;
++      std::wstring src = from + L"\\" + name, dst = to + L"\\" + name;
++      if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
++      {
++         MoveTreeToHome(src, dst);
++         RemoveDirectoryFromAppW(src.c_str());
++      }
++      else if (CopyFileFromAppW(src.c_str(), dst.c_str(), TRUE))
++         DeleteFileFromAppW(src.c_str());
++   } while (FindNextFileW(h, &fd));
++   FindClose(h);
++}
++
++/* The folder a setting names: "default" (or nothing) is RetroArch's own folder in LocalState. */
++static std::string FolderOf(const std::string &value, const char *own)
++{
++   if (value.empty() || value == "default")
++      return LocalStateDir() + "\\" + own;
++   if (value[0] == '~')
++      return LocalStateDir() + value.substr(1);
++   return value;
++}
++
++/* A setting's value in a .cfg file, without the quotes. */
++static std::string CfgValue(const std::string &text, const char *key)
++{
++   size_t len = strlen(key), pos = 0;
++   while ((pos = text.find(key, pos)) != std::string::npos)
++   {
++      bool line_start = pos == 0 || text[pos - 1] == '\n';
++      size_t eq       = text.find_first_not_of(" \t", pos + len);
++      pos            += len;
++      if (!line_start || eq == std::string::npos || text[eq] != '=')
++         continue;
++      size_t q1 = text.find('"', eq), nl = text.find('\n', eq);
++      if (q1 == std::string::npos || q1 > nl)
++         return std::string();
++      size_t q2 = text.find('"', q1 + 1);
++      return q2 == std::string::npos ? std::string() : text.substr(q1 + 1, q2 - q1 - 1);
++   }
++   return std::string();
++}
++
++static std::string ReadSmallFile(const std::string &path)
++{
++   std::string text;
++   HANDLE h = CreateFile2FromAppW(winrt::to_hstring(path).c_str(), GENERIC_READ, FILE_SHARE_READ, OPEN_EXISTING,
++         NULL);
++   if (h == INVALID_HANDLE_VALUE)
++      return text;
++   char buf[16384];
++   DWORD n;
++   while (ReadFile(h, buf, sizeof(buf), &n, NULL) && n)
++      text.append(buf, n);
++   CloseHandle(h);
++   return text;
++}
++
++/* The three folders to use for this game: in "home", or RetroArch's own when the last game had set "home".
++ * The current values come from the running settings, or before start-up from retroarch.cfg. Returns false
++ * when nothing has to change. */
++static bool HomeFolders(const std::string current[3], std::string want[3])
++{
++   bool change = false;
++   for (int i = 0; i < 3; i++)
++   {
++      if (s_home.empty())
++         want[i] = current[i].find("\\Game Vault\\") != std::string::npos ? "default" : current[i];
++      else
++      {
++         want[i]         = s_home + "\\" + kHomeFolders[i][1];
++         std::string own = FolderOf(current[i], kHomeFolders[i][2]);
++         CreateDirectoryFromAppW(winrt::to_hstring(want[i]).c_str(), NULL);
++         /* only RetroArch's own storage is emptied, never another drive's Game Vault folder */
++         if (UnderLocalState(own))
++            MoveTreeToHome(winrt::to_hstring(own).c_str(), winrt::to_hstring(want[i]).c_str());
++      }
++      change |= want[i] != current[i];
++   }
++   return change;
++}
++
++/* Before start-up: the folders go in a small extra config, given to RetroArch as --appendconfig. */
++static void HomeBeforeStart(std::vector<std::string> *args)
++{
++   std::string cfg = ReadSmallFile(LocalStateDir() + "\\retroarch.cfg"), current[3], want[3];
++   for (int i = 0; i < 3; i++)
++      current[i] = CfgValue(cfg, kHomeFolders[i][0]);
++   std::string extra = LocalStateDir() + "\\gamevault_home.cfg", text, fps = FpsChange();
++   if (HomeFolders(current, want))
++      for (int i = 0; i < 3; i++)
++         text += std::string(kHomeFolders[i][0]) + " = \"" + want[i] + "\"\n";
++   if (!fps.empty())
++      text += "video_fps_show = \"" + fps + "\"\n";
++   /* RetroArch's log of each session goes to the drive too (logs\retroarch.log), where a player can pick
++    * it up for a problem report */
++   if (!s_home.empty())
++      text += "log_to_file = \"true\"\nlog_to_file_timestamp = \"false\"\nlog_verbosity = \"true\"\n"
++              "frontend_log_level = \"1\"\nlibretro_log_level = \"1\"\nlog_dir = \"" + s_home + "\\logs\"\n";
++   if (text.empty())
++      return;
++   HANDLE h = CreateFile2FromAppW(winrt::to_hstring(extra).c_str(), GENERIC_WRITE, 0, CREATE_ALWAYS, NULL);
++   if (h == INVALID_HANDLE_VALUE)
++      return;
++   DWORD n;
++   WriteFile(h, text.data(), (DWORD)text.size(), &n, NULL);
++   CloseHandle(h);
++   if (args->empty())
++      args->push_back("retroarch");
++   args->insert(args->begin() + 1, extra);
++   args->insert(args->begin() + 1, "--appendconfig");
++}
++
++/* While running (a new game sent to an open RetroArch): straight into the settings. */
++static void HomeWhileRunning(void)
++{
++   settings_t *settings = config_get_ptr();
++   std::string fps      = FpsChange();
++   if (!fps.empty())
++      settings->bools.video_fps_show = fps == "true";
++   std::string current[3], want[3];
++   current[0] = settings->paths.directory_system;
++   current[1] = dir_get_ptr(RARCH_DIR_SAVEFILE);
++   current[2] = dir_get_ptr(RARCH_DIR_SAVESTATE);
++   if (!HomeFolders(current, want))
++      return;
++   for (int i = 0; i < 3; i++)
++      if (want[i] == "default")
++         want[i] = FolderOf("", kHomeFolders[i][2]);
++   strlcpy(settings->paths.directory_system, want[0].c_str(), sizeof(settings->paths.directory_system));
++   dir_set(RARCH_DIR_SAVEFILE, want[1].c_str());
++   dir_set(RARCH_DIR_SAVESTATE, want[2].c_str());
++   RARCH_LOG("[UWP] Game Vault folders: %s, %s, %s\n", want[0].c_str(), want[1].c_str(), want[2].c_str());
++}
++
+ /* Application lifecycle event handlers. */
+ 
+ void App::OnActivated(CoreApplicationView const& applicationView, IActivatedEventArgs const& args)
+@@ -416,10 +622,40 @@ void App::OnActivated(CoreApplicationView const& applicationView, IActivatedEven
+    std::vector<std::string> argvTmp;
+    ParseProtocolArgs(args, &argc, &argv, &argvTmp);
+ 
+-   /* Start only if not already initialized.
+-    * If there is a game in progress, just return */
++   /* Start only if not already initialized. */
+    if (m_initialized)
++   {
++      /* Already running (the player left with the Xbox button instead of
++       * quitting) and a launcher sends a new game: load it instead of
++       * ignoring it, so the launcher never has to ask the player to quit
++       * RetroArch first. "retroarch -L <core> <content>" */
++      const char *core    = NULL;
++      const char *content = NULL;
++      for (size_t i = 0; i + 1 < argvTmp.size(); i++)
++      {
++         if (argvTmp[i] == "-L")
++         {
++            core = argvTmp[i + 1].c_str();
++            for (size_t j = i + 2; j < argvTmp.size(); j++)
++            {
++               if (argvTmp[j].empty() || argvTmp[j][0] == '-')
++                  continue;
++               content = argvTmp[j].c_str();
++               break;
++            }
++            break;
++         }
++      }
++      if (core && content)
++      {
++         HomeWhileRunning();
++         content_ctx_info_t content_info = {0};
++         RARCH_LOG("[UWP] New game while running: %s with %s\n", content, core);
++         task_push_load_content_with_new_core_from_companion_ui(
++               core, content, NULL, NULL, NULL, &content_info, NULL, NULL);
++      }
+       return;
++   }
+ 
+    if ((ret = rarch_main(argc, argv.data(), NULL)) != 0)
+    {
+@@ -759,6 +995,8 @@ void App::ParseProtocolArgs(IActivatedEventArgs const& args, int *argc, std::vec
+    if (args.Kind() == ActivationKind::Protocol)
+    {
+       unsigned i;
++      std::string home;
++      bool fps = false;
+       ProtocolActivatedEventArgs protocolArgs = args.as<ProtocolActivatedEventArgs>();
+       WwwFormUrlDecoder query = protocolArgs.Uri().QueryParsed();
+ 
+@@ -771,7 +1009,7 @@ void App::ParseProtocolArgs(IActivatedEventArgs const& args, int *argc, std::vec
+           * to launch a different game. */
+          if (arg.Name() == L"forceExit")
+             CoreApplication::Exit();
+-         else if (arg.Name() == L"cmd" && !m_initialized)
++         else if (arg.Name() == L"cmd")
+          {
+             std::wstring wsValue(arg.Value().c_str());
+             std::string strValue(wsValue.begin(), wsValue.end());
+@@ -789,9 +1027,19 @@ void App::ParseProtocolArgs(IActivatedEventArgs const& args, int *argc, std::vec
+           * making it easy to integrate RA with other UWP frontends */
+          else if (arg.Name() == L"launchOnExit")
+             m_launchOnExit = arg.Value();
++         /* Game Vault's folder on the games drive (see HomeFolders) */
++         else if (arg.Name() == L"home")
++            home = winrt::to_string(arg.Value());
++         else if (arg.Name() == L"fps")
++            fps = arg.Value() == L"1";
+       }
++      s_home = home;
++      s_fps  = fps;
+    }
+ 
++   if (!m_initialized)
++      HomeBeforeStart(argvTmp);
++
+    if (!m_initialized)
+    {
+       int i;

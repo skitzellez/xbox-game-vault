@@ -1,0 +1,19 @@
+[general]
+show_welcome = false
+
+[general.updates]
+check = false
+
+[display]
+renderer = 'OPENGL'
+setup_nvidia_profile = false
+
+[display.window]
+fullscreen_on_startup = true
+
+[sys.files]
+bootrom_path = 'Q:/Users/UserMgr0/AppData/Local/Packages/GamerDad.Xemu_w8c8c10g47ykp/LocalState/xemu/xemu/mcpx_1.0.bin'
+flashrom_path = 'Q:/Users/UserMgr0/AppData/Local/Packages/GamerDad.Xemu_w8c8c10g47ykp/LocalState/xemu/xemu/Complex_4627.bin'
+hdd_path = 'Q:/Users/UserMgr0/AppData/Local/Packages/GamerDad.Xemu_w8c8c10g47ykp/LocalState/xemu/xemu/xbox_hdd.qcow2'
+eeprom_path = 'Q:/Users/UserMgr0/AppData/Local/Packages/GamerDad.Xemu_w8c8c10g47ykp/LocalState/xemu/xemu/eeprom.bin'
+dvd_path = 'E:/Crash Bandicoot - The Wrath of Cortex.iso'
