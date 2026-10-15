@@ -132,6 +132,7 @@ Everything you would hate to lose is in one folder on your USB drive, `Game Vaul
 | `xbox` | A copy of the original Xbox hard disk, where Xbox games save (exFAT and NTFS drives) |
 | `logs` | A log for each Xbox game, to send with a problem report |
 | `older saves` | A save that was replaced by a newer copy from the console |
+| `box art` | Game covers, so they are not downloaded again after a reinstall or on another console |
 
 The console keeps a backup of your BIOS files, saves, memory cards and the newest save state of each game. On
 a new stick, copy your games on and start Game Vault: the rest comes back by itself. Copying the `Game Vault`
