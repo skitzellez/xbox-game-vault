@@ -6,7 +6,7 @@
   <Identity Name="GamerDad.Xemu" Publisher="CN=GamerDad" Version="0.9.38.0" ProcessorArchitecture="x64" />
   <Properties>
     <DisplayName>xemu (Xbox port)</DisplayName>
-    <PublisherDisplayName>GamerDad</PublisherDisplayName>
+    <PublisherDisplayName>Skitzelles</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
   <Dependencies>

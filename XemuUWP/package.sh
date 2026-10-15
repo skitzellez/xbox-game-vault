@@ -5,7 +5,8 @@
 # DLL it needs, SDL3.dll (UWP) and Mesa's OpenGL DLLs, marks the exe AppContainer, then packs and signs.
 set -e
 V=${1:-0.1.0.0}
-D=/c/Users/GamerDad/XboxEmu/XemuUWP; SRC=${XEMU_EXE:-/c/Users/GamerDad/XboxEmu/xemu-src/build-uwp/qemu-system-i386w.exe}
+R=${GAMEVAULT_ROOT:?set GAMEVAULT_ROOT to the folder holding XemuUWP and xemu-src}
+D=$R/XemuUWP; SRC=${XEMU_EXE:-$R/xemu-src/build-uwp/qemu-system-i386w.exe}
 cd $D
 find pkg -maxdepth 1 -name "*.dll" -delete; rm -f pkg/xemu.exe
 cp $SRC pkg/xemu.exe

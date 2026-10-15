@@ -140,8 +140,9 @@ folder to a PC now and then is still a good idea, in case the stick and the cons
 ## 🔄 Updating
 
 Run **GameVault-Setup.zip** from the newest [release](https://github.com/skitzellez/xbox-game-vault/releases/latest)
-again. It updates whatever is out of date and keeps your games, saves and settings. A Game Vault that has become
-too old says so on the screen and does not start games until it is updated.
+again. It updates whatever is out of date and keeps your games, saves and settings. When a newer Game Vault is out,
+it shows a short notice once; everything keeps working, so you can update when it suits you. Only in the rare case of
+a serious problem in an old version does Game Vault ask for an update before starting games.
 
 ## 🐞 Reporting a problem
 

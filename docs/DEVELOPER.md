@@ -194,7 +194,7 @@ Windows 11, Visual Studio 2022 Build Tools with the UWP workload, Windows SDK 10
 Game Vault: its source code is not published (from version 0.15.14 on); the app comes from the releases.
 
 xemu: build the `uwp` branch as described in its `README-UWP.md`, then `XemuUWP/package.sh <version>`. The
-scripts contain paths from the author's PC (`C:\Users\GamerDad\XboxEmu`, `C:\msys64`); adjust them.
+scripts expect MSYS2 in `C:\msys64` and the folder holding `XemuUWP` and `xemu-src` in `GAMEVAULT_ROOT`.
 
 The emulator builds' complete source is public: [xemu-uwp](https://github.com/skitzellez/xemu-uwp) (branch
 `uwp`), [RetroArch-GameVault](https://github.com/skitzellez/RetroArch-GameVault) and

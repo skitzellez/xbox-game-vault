@@ -7,7 +7,7 @@
 # Stops when make fails, so an old exe is never repackaged under a new version.
 set -e
 V=${1:?version}
-R=${GAMEVAULT_ROOT:-/c/Users/GamerDad/XboxEmu}   # the folder holding xemu-src, XemuUWP and sdl3-uwp-pc
+R=${GAMEVAULT_ROOT:?set GAMEVAULT_ROOT}   # the folder holding xemu-src, XemuUWP and sdl3-uwp-pc
 export PKG_CONFIG_PATH=$R/sdl3-uwp-pc:$PKG_CONFIG_PATH
 cd $R/xemu-src/build-uwp-opt
 make -j14 qemu-system-i386w.exe
