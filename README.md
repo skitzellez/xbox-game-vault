@@ -169,7 +169,7 @@ Game Vault has no account, no ads and no tracking. It connects to these places o
 
 | Where | What for | When |
 |---|---|---|
-| Skitzelles' private report storage (Backblaze B2) | Problem reports: the session logs of the games you played (game file name, speed, memory, the buttons held, what happened, crash details) and Game Vault's own log | **Only if you said yes**; turn it off any time with **Menu** |
+| Skitzelles' private report storage (Backblaze B2) | Problem reports: the session logs of the games you played (game file name, speed, memory, the buttons held, what happened, crash details, the console model) and Game Vault's own log; after a crash, also the last few small pictures of the screen (320x240) from before it | **Only if you said yes**; turn it off any time with **Menu** |
 | GameTDB and the libretro thumbnail server | Game names and box art | When a game is new to the library |
 | GitHub (raw.githubusercontent.com) | Game lists for PlayStation 1 and 2, and the check for the lowest supported Game Vault version | Now and then, at start |
 
