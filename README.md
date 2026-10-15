@@ -107,6 +107,7 @@ Doing it by hand instead, or building from source: see **[docs/DEVELOPER.md](doc
 | B | Back |
 | Y | Look for games again |
 | View | Play or copy the disc in the console's drive |
+| Menu | Problem reports on or off (see [Privacy](#-privacy-what-game-vault-sends)) |
 
 **In xemu (original Xbox)**
 
@@ -136,10 +137,20 @@ The console keeps a backup of your BIOS files, saves, memory cards and the newes
 a new stick, copy your games on and start Game Vault: the rest comes back by itself. Copying the `Game Vault`
 folder to a PC now and then is still a good idea, in case the stick and the console are both lost.
 
+## 🔄 Updating
+
+Run **GameVault-Setup.zip** from the newest [release](https://github.com/skitzellez/xbox-game-vault/releases/latest)
+again. It updates whatever is out of date and keeps your games, saves and settings. A Game Vault that has become
+too old says so on the screen and does not start games until it is updated.
+
 ## 🐞 Reporting a problem
 
-Please [open an issue](https://github.com/skitzellez/xbox-game-vault/issues/new) and attach a log. It is what
-turns "it doesn't work" into a fix.
+The first time Game Vault starts, it asks whether it may send problem reports. If you say yes, the logs of your
+sessions are sent by themselves after you play (see [Privacy](#-privacy-what-game-vault-sends)), and there is
+nothing else to do. The **Menu** button turns this on or off at any time.
+
+You can also [open an issue](https://github.com/skitzellez/xbox-game-vault/issues/new) and attach a log. It is
+what turns "it doesn't work" into a fix.
 
 Everything is in **`Game Vault\logs`** on your USB drive. Send the files for the game you were playing:
 
@@ -151,6 +162,20 @@ Everything is in **`Game Vault\logs`** on your USB drive. Send the files for the
 | `Game Vault.txt` | Game Vault itself. |
 
 Tip: send the log before you play that game again, as each new session replaces the last one.
+
+## 🔒 Privacy: what Game Vault sends
+
+Game Vault has no account, no ads and no tracking. It connects to these places only:
+
+| Where | What for | When |
+|---|---|---|
+| Skitzelles' private report storage (Backblaze B2) | Problem reports: the session logs of the games you played (game file name, speed, memory, the buttons held, what happened, crash details) and Game Vault's own log | **Only if you said yes**; turn it off any time with **Menu** |
+| GameTDB and the libretro thumbnail server | Game names and box art | When a game is new to the library |
+| GitHub (raw.githubusercontent.com) | Game lists for PlayStation 1 and 2, and the check for the lowest supported Game Vault version | Now and then, at start |
+
+Reports are filed under a random code for the console, not a name, and can only be read by the project's
+author. Nothing else on the console or the USB drive is sent: no saves, no game files, no BIOS files. The
+emulators themselves do not connect to anything unless a game goes online.
 
 ## 🔗 Related projects
 

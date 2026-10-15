@@ -48,7 +48,7 @@ sed -i "s/ Version=\"[0-9.]*\" ProcessorArchitecture/ Version=\"$V\" ProcessorAr
 SDK="/c/Program Files (x86)/Windows Kits/10/bin/10.0.26100.0/x64"
 mkdir -p dist; rm -f dist/Xemu_x64.appx
 "$SDK/makeappx.exe" pack //o //d pkg //p dist/Xemu_x64.appx >/dev/null
-# signing password: PFX_PASSWORD, or the one line in GameVault/cert/password.txt (not in git)
-PFX_PASSWORD=${PFX_PASSWORD:-$(tr -d '\r\n' < ../GameVault/cert/password.txt)}
+# signing: your own certificate at GameVault/cert/GameVault.pfx, its password in PFX_PASSWORD
+PFX_PASSWORD=${PFX_PASSWORD:?set PFX_PASSWORD to your signing certificate\'s password}
 "$SDK/signtool.exe" sign //fd SHA256 //a //f ../GameVault/cert/GameVault.pfx //p "$PFX_PASSWORD" dist/Xemu_x64.appx >/dev/null
 ls pkg/*.dll | wc -l; ls -la dist/Xemu_x64.appx

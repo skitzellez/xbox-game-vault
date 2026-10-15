@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Skitzelles - part of Game Vault, https://github.com/skitzellez/xbox-game-vault
+# PolyForm Noncommercial License 1.0.0: not for sale, and this notice stays in every copy.
 # Game Vault all-in-one setup for an Xbox Series X|S or Xbox One in Dev Mode. Run it on a Windows PC that is
 # on the same network as the console (double-click "Install Game Vault.bat").
 #
