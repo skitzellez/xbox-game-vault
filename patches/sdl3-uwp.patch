@@ -132,7 +132,7 @@ index 5b8817c..f43cfaa 100644
          Windows::ApplicationModel::Activation::ActivationKind::Protocol) {
  
 diff --git a/src/video/winrt/SDL_winrtvideo.cpp b/src/video/winrt/SDL_winrtvideo.cpp
-index 5e832c9..23a50e5 100644
+index 5e832c9..4c5af46 100644
 --- a/src/video/winrt/SDL_winrtvideo.cpp
 +++ b/src/video/winrt/SDL_winrtvideo.cpp
 @@ -118,7 +118,7 @@ static void WINRT_GetGamingDeviceMaxResolution(Uint32 *max_w, Uint32 *max_h)
@@ -153,7 +153,7 @@ index 5e832c9..23a50e5 100644
          (void)SDL_snprintf(model, sizeof(model), "vendorId=0x%X deviceId=0x%X",
                             (unsigned)info.vendorId, (unsigned)info.deviceId);
      } else {
-@@ -183,6 +183,64 @@ static void WINRT_LogOutputResolutionOnce(void)
+@@ -183,6 +183,71 @@ static void WINRT_LogOutputResolutionOnce(void)
      }
  }
  
@@ -174,12 +174,19 @@ index 5e832c9..23a50e5 100644
 +            return;
 +        }
 +        const Uint64 curPixels = (Uint64)cur->ResolutionWidthInRawPixels * cur->ResolutionHeightInRawPixels;
++        // never past what this console draws for an app (Series S: 1440p): a 4K mode there left the picture
++        // in the bottom-left corner of a 4K screen (a player's Series S on a 4K TV)
++        Uint32 max_w = 0, max_h = 0;
++        WINRT_GetGamingDeviceMaxResolution(&max_w, &max_h);
 +        HdmiDisplayMode ^ best = nullptr;
 +        Uint64 bestScore = 0;
 +        auto modes = hdi->GetSupportedDisplayModes();
 +        for (unsigned int i = 0; i < modes->Size; ++i) {
 +            HdmiDisplayMode ^ m = modes->GetAt(i);
 +            if (m->StereoEnabled || m->RefreshRate < 59 || m->RefreshRate > 61) {
++                continue;
++            }
++            if (m->ResolutionWidthInRawPixels > max_w || m->ResolutionHeightInRawPixels > max_h) {
 +                continue;
 +            }
 +            const Uint64 pixels = (Uint64)m->ResolutionWidthInRawPixels * m->ResolutionHeightInRawPixels;
@@ -218,7 +225,7 @@ index 5e832c9..23a50e5 100644
  static void WINRT_ResolveOutputSize(void)
  {
      if (WINRT_OutputSizeResolved) {
-@@ -200,6 +258,12 @@ static void WINRT_ResolveOutputSize(void)
+@@ -200,6 +265,12 @@ static void WINRT_ResolveOutputSize(void)
      Uint32 display_h = 0;
      WINRT_CachedDisplayModeQueryFailed = false;
  
