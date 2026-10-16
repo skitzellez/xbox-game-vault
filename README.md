@@ -104,6 +104,7 @@ Doing it by hand instead, or building from source: see **[docs/DEVELOPER.md](doc
 |---|---|
 | A | Play |
 | X | Game details (system, which emulator, what it still needs) |
+| LB (in an Xbox game's details) | Play with a fresh game cache, if a game says the disc may be dirty |
 | B | Back |
 | Y | Look for games again |
 | View | Play or copy the disc in the console's drive |
