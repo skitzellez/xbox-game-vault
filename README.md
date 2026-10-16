@@ -180,7 +180,7 @@ Game Vault has no account, no ads and no tracking. It connects to these places o
 | Where | What for | When |
 |---|---|---|
 | Skitzelles' private report storage (Backblaze B2) | Problem reports: the session logs of the games you played (game file name, speed, memory, the buttons held, what happened, crash details, the console model) and Game Vault's own log; after a crash, also the last few small pictures of the screen (320x240) from before it | **Only if you said yes**; turn it off any time with **Menu** |
-| GameTDB and the libretro thumbnail server | Game names and box art | When a game is new to the library |
+| GameTDB and the libretro thumbnail server | Game names, box art, and the small preview pictures (title screen, a picture of the game) | Box art when a game is new to the library; preview pictures when you stop on a game, once |
 | GitHub (raw.githubusercontent.com) | Game lists for PlayStation 1 and 2, the check for the lowest supported Game Vault version, picture settings for xemu, and the shared shader warm-up lists (always the whole set, so it says nothing about your games) | Now and then, at start |
 
 Reports are filed under a random code for the console, not a name, and can only be read by the project's
