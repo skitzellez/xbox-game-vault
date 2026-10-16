@@ -46,7 +46,7 @@ port of the original Xbox emulator **xemu**, and it sets up the other emulators 
 | 🔎 **Knows every game** | Reads the files themselves, so a PlayStation 2 game is never mistaken for a PlayStation one. Zipped and packed games (ZIP, 7z, RAR, CHD) work too. |
 | 🖼️ **Box art and names** | Filled in by themselves. |
 | 🟢 **Original Xbox** | Our own Dev Mode port of xemu. A free BIOS is built in, so games start even without Xbox files of your own. |
-| 📀 **Discs from the drive** | PlayStation and PlayStation 2 discs play straight from the Series X disc drive. |
+| 📀 **Discs from the drive** | Your own PlayStation and PlayStation 2 discs play straight from the Series X disc drive - no PC needed. Original Xbox discs cannot be read by the Series X drive: copy them to your USB drive once. |
 | 💾 **Saves on your stick** | Saves, memory cards, save states and BIOS files live in a `Game Vault` folder on the USB drive, right next to your games. |
 | 🛟 **Silent backup** | The console keeps a copy of your saves. Lose the stick, plug in a new one, and they come back by themselves. |
 | ⚡ **Big collections** | Thousands of games load in seconds once they have been seen. |
