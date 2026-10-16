@@ -25,7 +25,7 @@ index 3a4da91..cc4794e 100644
    if(NOT WINDOWS_STORE)
      sdl_glob_sources(
 diff --git a/src/core/winrt/SDL_winrtapp_direct3d.cpp b/src/core/winrt/SDL_winrtapp_direct3d.cpp
-index 5b8817c..4457b85 100644
+index 5b8817c..f43cfaa 100644
 --- a/src/core/winrt/SDL_winrtapp_direct3d.cpp
 +++ b/src/core/winrt/SDL_winrtapp_direct3d.cpp
 @@ -22,6 +22,18 @@
@@ -47,7 +47,22 @@ index 5b8817c..4457b85 100644
  using namespace concurrency;
  using namespace Windows::ApplicationModel;
  using namespace Windows::ApplicationModel::Core;
-@@ -602,6 +614,46 @@ void SDL_WinRTApp::OnWindowActivated(CoreWindow ^ sender, WindowActivatedEventAr
+@@ -257,6 +269,14 @@ void SDL_WinRTApp::SetWindow(CoreWindow ^ window)
+             window->Bounds.Height);
+ #endif
+ 
++    // Local addition (xemu for Xbox Dev Mode): the whole screen. On Xbox an app is otherwise kept inside the
++    // TV-safe area (a frame around the picture; a Series S player could not get xemu to fill the screen).
++    try {
++        Windows::UI::ViewManagement::ApplicationView::GetForCurrentView()->SetDesiredBoundsMode(
++            Windows::UI::ViewManagement::ApplicationViewBoundsMode::UseCoreWindow);
++    } catch (...) {
++    }
++
+     window->SizeChanged +=
+         ref new TypedEventHandler<CoreWindow ^, WindowSizeChangedEventArgs ^>(this, &SDL_WinRTApp::OnWindowSizeChanged);
+ 
+@@ -602,6 +622,46 @@ void SDL_WinRTApp::OnWindowActivated(CoreWindow ^ sender, WindowActivatedEventAr
      }
  }
  
@@ -94,7 +109,7 @@ index 5b8817c..4457b85 100644
  void SDL_WinRTApp::OnWindowClosed(CoreWindow ^ sender, CoreWindowEventArgs ^ args)
  {
  #if LOG_WINDOW_EVENTS == 1
-@@ -614,6 +666,21 @@ void SDL_WinRTApp::OnAppActivated(CoreApplicationView ^ applicationView, IActiva
+@@ -614,6 +674,21 @@ void SDL_WinRTApp::OnAppActivated(CoreApplicationView ^ applicationView, IActiva
  {
      CoreWindow::GetForCurrentThread()->Activate();
  
