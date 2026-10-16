@@ -108,7 +108,7 @@ Doing it by hand instead, or building from source: see **[docs/DEVELOPER.md](doc
 | Y | Look for games again |
 | View | Play or copy the disc in the console's drive |
 | Menu | Problem reports on or off (see [Privacy](#-privacy-what-game-vault-sends)) |
-| RT | Update with your phone (when a newer Game Vault is out) |
+| RT | Update with your phone (when a newer Game Vault or xemu is out) |
 
 **In xemu (original Xbox)**
 
@@ -146,11 +146,12 @@ again. It updates whatever is out of date and keeps your games, saves and settin
 it shows a short notice once; everything keeps working, so you can update when it suits you. Only in the rare case of
 a serious problem in an old version does Game Vault ask for an update before starting games.
 
-**No PC? Update with your phone.** When a newer Game Vault is out, an orange **RT Update** badge shows in the library.
-Press **RT** and Game Vault shows two QR codes: the first downloads the new version to your phone, the second opens
-your Xbox's Device Portal (the phone must be on the same network as the Xbox). In the Device Portal, tap **Add**
-under *My games & apps*, choose the downloaded file, then **Next** and **Start**. Your games, saves and settings are
-kept. This updates Game Vault only; xemu and the other emulators still update through the setup on a PC.
+**No PC? Update with your phone.** When a newer Game Vault or xemu is out, an orange **RT Update** badge shows in
+the library. Press **RT** and Game Vault shows two QR codes: the first downloads the new version to your phone, the
+second opens your Xbox's Device Portal (the phone must be on the same network as the Xbox). In the Device Portal, tap
+**Add** under *My games & apps*, choose the downloaded file, then **Next** and **Start**. When both are out, xemu
+comes first (**RB** goes to the next one). Your games, saves and settings are kept. The other emulators still update
+through the setup on a PC.
 
 ## 🐞 Reporting a problem
 
