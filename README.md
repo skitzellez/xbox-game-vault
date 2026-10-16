@@ -108,7 +108,7 @@ Doing it by hand instead, or building from source: see **[docs/DEVELOPER.md](doc
 | Y | Look for games again |
 | View | Play or copy the disc in the console's drive |
 | Menu | Problem reports on or off (see [Privacy](#-privacy-what-game-vault-sends)) |
-| RT | Update with your phone (when a newer Game Vault or emulator is out) |
+| RT | Updates: install new versions with your phone, or see that everything is up to date |
 
 **In xemu (original Xbox)**
 
