@@ -84,6 +84,23 @@ if (-not $info -or -not $info.Platform) {
 Say "Connected: $($info.Platform) `"$($info.ComputerName)`"" "Green"
 $series = $info.Platform -match "Series"
 
+# Dev Home's "treat UWP apps as games by default" (Device Portal setting DefaultUWPContentTypeToGame): apps
+# installed after it is on (and the console restarted) start as type Game with full memory, instead of the
+# player changing App type by hand for each. Nothing else on the console changes.
+try {
+    $st = Json (Portal -m 15 "$B/ext/settings")
+    $gameType = $st.Settings | Where-Object { $_.Name -eq "DefaultUWPContentTypeToGame" } | Select-Object -First 1
+    if ($gameType -and $gameType.Value -ne "true") {
+        # the body from a file: Windows PowerShell 5.1 drops the quotes inside an argument passed to curl
+        $body = Join-Path $env:TEMP "gamevault-setting.json"
+        [IO.File]::WriteAllText($body, '{"Value":"true"}')
+        $tok = Token
+        Portal -m 15 -X PUT -H "X-CSRF-Token: $tok" -H "Content-Type: application/json" --data-binary "@$body" "$B/ext/settings/DefaultUWPContentTypeToGame" -o NUL
+        Remove-Item -LiteralPath $body -ErrorAction SilentlyContinue
+        Say "   new apps will start as type Game (takes effect after the console restarts)" "DarkGray"
+    }
+} catch { }
+
 function Packages { (Json (Portal "$B/api/app/packagemanager/packages")).InstalledPackages }
 function Installed($prefix) { Packages | Where-Object { $_.PackageFullName -like "$prefix*" } | Select-Object -First 1 }
 
@@ -103,7 +120,9 @@ function Releases($repo) {
     $json = curl.exe -sL -m 30 -H "User-Agent: GameVaultSetup" "https://api.github.com/repos/$repo/releases?per_page=5"
     $r = Json $json
     if (-not $r -or ($r -isnot [array] -and $r.message -and -not $r.tag_name)) { throw "could not read the release list of $repo (GitHub may be limiting requests; try again in an hour)" }
-    return $r
+    # newest first by publishing time: GitHub's own order follows the date of the release's commit, which
+    # is the same for releases made from an unchanged branch
+    return @($r | Sort-Object { $_.published_at } -Descending)
 }
 # Newest release of a GitHub project that has a file matching $pattern: its version text and download address.
 function FromGitHub($repo, $pattern) {
@@ -503,7 +522,8 @@ Head "6. Two things to do on the console"
 Say "a) Give the apps full memory. In Dev Home > Games and apps, for each of these: select it, View details,"
 Say "   and change App type from App to Game:"
 foreach ($c in $components) { if (Installed $c.Prefix) { Say "      $($c.Title)" "White" } }
-Say "   (A new install starts as type App, which is too little memory for most of them.)"
+Say "   (A new install starts as type App, which is too little memory for most of them. If it already says Game,"
+Say "   there is nothing to do: this setup turns on Dev Home's 'treat apps as games' setting for new installs.)"
 if ($series) {
     Say "b) Put your games on any USB drive (FAT32, exFAT or NTFS) and plug it in. Game Vault makes a Game Vault"
     Say "   folder on it for your saves and BIOS files; new BIOS files go in Game Vault\bios."

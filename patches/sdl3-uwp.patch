@@ -25,10 +25,76 @@ index 3a4da91..cc4794e 100644
    if(NOT WINDOWS_STORE)
      sdl_glob_sources(
 diff --git a/src/core/winrt/SDL_winrtapp_direct3d.cpp b/src/core/winrt/SDL_winrtapp_direct3d.cpp
-index 5b8817c..e904eb7 100644
+index 5b8817c..4457b85 100644
 --- a/src/core/winrt/SDL_winrtapp_direct3d.cpp
 +++ b/src/core/winrt/SDL_winrtapp_direct3d.cpp
-@@ -614,6 +614,21 @@ void SDL_WinRTApp::OnAppActivated(CoreApplicationView ^ applicationView, IActiva
+@@ -22,6 +22,18 @@
+ 
+ // Windows includes
+ #include "ppltasks.h"
++#include <thread>
++#include <string>
++#include <roapi.h>
++// IStorageItemHandleAccess, as in the SDK's WindowsStorageCOM.h (which pulls in desktop-only shell headers)
++enum { SDLUWP_HAO_READ = 0x120089, SDLUWP_HAO_WRITE = 0x120116, SDLUWP_HSO_SHARE_READ = 0x1,
++       SDLUWP_HSO_SHARE_WRITE = 0x2, SDLUWP_HO_NONE = 0 };
++MIDL_INTERFACE("5CA296B2-2C25-4D22-B785-B885C8201E6A")
++SDLUWP_IStorageItemHandleAccess : public IUnknown
++{
++    virtual HRESULT STDMETHODCALLTYPE Create(DWORD accessOptions, DWORD sharingOptions, DWORD options,
++                                             IUnknown *oplockBreakingHandler, HANDLE *interopHandle) = 0;
++};
+ using namespace concurrency;
+ using namespace Windows::ApplicationModel;
+ using namespace Windows::ApplicationModel::Core;
+@@ -602,6 +614,46 @@ void SDL_WinRTApp::OnWindowActivated(CoreWindow ^ sender, WindowActivatedEventAr
+     }
+ }
+ 
++// Local addition (xemu for Xbox Dev Mode): a file another app shared with SharedStorageAccessManager.AddFile
++// (Game Vault passes the token in its launch link) as a Win32 handle, for drives this app may not open itself.
++// Runs the WinRT calls on a thread of its own: blocking on them is not allowed on the app's UI thread.
++// Returns NULL when the token cannot be redeemed.
++extern "C" SDL_DECLSPEC void *SDLCALL SDL_WinRTOpenSharedFile(const char *token, bool writable)
++{
++    wchar_t *wtoken = WIN_UTF8ToStringW(token);
++    if (!wtoken) {
++        return NULL;
++    }
++    std::wstring t(wtoken);
++    SDL_free(wtoken);
++    HANDLE result = NULL;
++    std::thread worker([&]() {
++        if (FAILED(RoInitialize(RO_INIT_MULTITHREADED))) {
++            return;
++        }
++        try {
++            Windows::Storage::StorageFile ^ file =
++                create_task(Windows::ApplicationModel::DataTransfer::SharedStorageAccessManager::RedeemTokenForFileAsync(
++                    ref new Platform::String(t.c_str()))).get();
++            SDLUWP_IStorageItemHandleAccess *access = nullptr;
++            if (SUCCEEDED(reinterpret_cast<IUnknown *>(file)->QueryInterface(__uuidof(SDLUWP_IStorageItemHandleAccess),
++                                                                             (void **)&access))) {
++                HANDLE h = NULL;
++                if (SUCCEEDED(access->Create(writable ? (SDLUWP_HAO_READ | SDLUWP_HAO_WRITE) : SDLUWP_HAO_READ,
++                                             SDLUWP_HSO_SHARE_READ | SDLUWP_HSO_SHARE_WRITE, SDLUWP_HO_NONE,
++                                             nullptr, &h))) {
++                    result = h;
++                }
++                access->Release();
++            }
++        } catch (...) {
++        }
++        RoUninitialize();
++    });
++    worker.join();
++    return result;
++}
++
+ void SDL_WinRTApp::OnWindowClosed(CoreWindow ^ sender, CoreWindowEventArgs ^ args)
+ {
+ #if LOG_WINDOW_EVENTS == 1
+@@ -614,6 +666,21 @@ void SDL_WinRTApp::OnAppActivated(CoreApplicationView ^ applicationView, IActiva
  {
      CoreWindow::GetForCurrentThread()->Activate();
  
