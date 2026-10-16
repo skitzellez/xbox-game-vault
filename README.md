@@ -45,7 +45,9 @@ port of the original Xbox emulator **xemu**, and it sets up the other emulators 
 | 🔌 **Plug and play** | Put your games on a USB stick in any folders, with any names. FAT32, exFAT and NTFS all work as they are, with no formatting or permissions to set. |
 | 🔎 **Knows every game** | Reads the files themselves, so a PlayStation 2 game is never mistaken for a PlayStation one. Zipped and packed games (ZIP, 7z, RAR, CHD) work too. |
 | 🖼️ **Box art and names** | Filled in by themselves. |
+| 🎨 **A look for every console** | Each console has its own colour and moving background; a console with only a few games shows the chosen one big. |
 | 🟢 **Original Xbox** | Our own Dev Mode port of xemu. A free BIOS is built in, so games start even without Xbox files of your own. |
+| ⚪ **Xbox 360** (Series X\|S) | Our build of Xenia Canary plays 360 games from any USB drive, with no permission step and no profile to make. |
 | 📀 **Discs from the drive** | Your own PlayStation and PlayStation 2 discs play straight from the Series X disc drive - no PC needed. Original Xbox discs cannot be read by the Series X drive: copy them to your USB drive once. |
 | 💾 **Saves on your stick** | Saves, memory cards, save states and BIOS files live in a `Game Vault` folder on the USB drive, right next to your games. |
 | 🛟 **Silent backup** | The console keeps a copy of your saves. Lose the stick, plug in a new one, and they come back by themselves. |
@@ -57,6 +59,7 @@ port of the original Xbox emulator **xemu**, and it sets up the other emulators 
 | System | Plays in |
 |---|---|
 | Original Xbox | xemu for Dev Mode (ours) |
+| Xbox 360 (Series X\|S) | Xenia for Game Vault (ours, based on Xenia Canary) |
 | PlayStation, Saturn, Sega CD, Game Boy / Color / Advance, NES, SNES, N64, DS, Genesis and other cartridge and CD systems, ScummVM | RetroArch for Game Vault (ours, based on RetroArch) |
 | PlayStation 2 | XBSX2 for Game Vault (ours, based on XBSX2) |
 | GameCube, Wii | Dolphin for UWP |
@@ -182,7 +185,8 @@ Game Vault has no account, no ads and no tracking. It connects to these places o
 |---|---|---|
 | Skitzelles' private report storage (Backblaze B2) | Problem reports: the session logs of the games you played (game file name, speed, memory, the buttons held, what happened, crash details, the console model) and Game Vault's own log; after a crash, also the last few small pictures of the screen (320x240) from before it | **Only if you said yes**; turn it off any time with **Menu** |
 | GameTDB and the libretro thumbnail server | Game names, box art, and the small preview pictures (title screen, a picture of the game) | Box art when a game is new to the library; preview pictures when you stop on a game, once |
-| GitHub (raw.githubusercontent.com) | Game lists for PlayStation 1 and 2, the check for the lowest supported Game Vault version, picture settings for xemu, and the shared shader warm-up lists (always the whole set, so it says nothing about your games) | Now and then, at start |
+| Microsoft (download.xbox.com) | Box art of Xbox 360 games, asked for by the game's ID | When a 360 game is new to the library |
+| GitHub (raw.githubusercontent.com) | Game name lists (PlayStation 1 and 2, and the libretro database for Xbox and Xbox 360), Game Vault's own small fixes and notices, the check for the lowest supported Game Vault version, picture settings for xemu, and the shared shader warm-up lists (always the whole set, so it says nothing about your games) | Now and then, at start |
 
 Reports are filed under a random code for the console, not a name, and can only be read by the project's
 author. Nothing else on the console or the USB drive is sent: no saves, no game files, no BIOS files. The
@@ -194,6 +198,8 @@ emulators themselves do not connect to anything unless a game goes online.
 - [RetroArch for Game Vault](https://github.com/skitzellez/RetroArch-GameVault) and
   [XBSX2 for Game Vault](https://github.com/skitzellez/XBSX2-GameVault): our builds, which read any USB drive and
   keep your saves in the `Game Vault` folder (source and changes).
+- [Xenia for Game Vault](https://github.com/skitzellez/Xenia-GameVault): our build of Xenia Canary for Xbox 360 games
+  (source, branch `gamevault`).
 
 ## ❤️ Support the project
 
@@ -207,9 +213,12 @@ you can support it on **[Patreon](https://www.patreon.com/Skitzelles)**. ❤️
 - [xemu](https://xemu.app) and QEMU, [RetroArch](https://www.retroarch.com) and the libretro cores,
   [XBSX2](https://github.com/XboxEmulationHub/XBSX2) and [PCSX2](https://pcsx2.net), and
   [XboxEmulationHub](https://github.com/XboxEmulationHub) for SDL3-uwp, mesa-uwp and their Xbox builds.
+- [Xenia](https://xenia.jp) and Xenia Canary, and [danprice142](https://github.com/danprice142/xenia-canary-uwp) for the
+  Xbox (UWP) port of Xenia Canary (BSD-3).
 - [SpiritBoot](https://github.com/Mainkill1/SpiritBoot) (free original Xbox BIOS) and OpenBIOS (free PlayStation
   BIOS).
-- Title data from GameTDB, box art from the libretro thumbnail server.
+- Title data from GameTDB and the libretro database (Redump lists), box art from the libretro thumbnail server.
+- The [Orbitron](https://github.com/theleagueof/orbitron) font (SIL Open Font License).
 - LZMA SDK (public domain), UnRAR (freeware licence) and Project Nayuki's
   [QR Code generator](https://github.com/nayuki/QR-Code-generator) (MIT).
 
@@ -223,4 +232,4 @@ unchanged for noncommercial purposes under the PolyForm Noncommercial License 1.
 setup program.
 
 xemu, RetroArch and XBSX2 are GPL software, so our builds of them are GPL too, with their source published in
-the repositories linked above.
+the repositories linked above. Xenia is BSD-3 software; our build's source is published too.

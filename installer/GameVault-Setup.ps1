@@ -5,7 +5,7 @@
 #
 # What it does, through the console's Device Portal:
 #   1. installs or updates Game Vault and xemu (from their GitHub releases) and the emulators Game Vault starts:
-#      RetroArch, Dolphin, XBSX2, PPSSPP and Flycast. On a Series X|S, RetroArch and XBSX2 are our own builds
+#      RetroArch, Dolphin, XBSX2, PPSSPP, Flycast and (Series X|S) Xenia for Game Vault. On a Series X|S, RetroArch and XBSX2 are our own builds
 #      ("RetroArch for Game Vault", "XBSX2 for Game Vault": any USB drive works, saves live on it), and what the
 #      original RetroArch / XBSX2 apps held (settings, saves, states, BIOS files, memory cards) is copied over;
 #      the others come from their own projects;
@@ -116,8 +116,8 @@ function Fetch($url, $name) {
     Set-Content -LiteralPath "$file.ok" -Value $url
     return $file
 }
-function Releases($repo) {
-    $json = curl.exe -sL -m 30 -H "User-Agent: GameVaultSetup" "https://api.github.com/repos/$repo/releases?per_page=5"
+function Releases($repo, $count = 5) {   # $count: a shared download repository holds many projects
+    $json = curl.exe -sL -m 30 -H "User-Agent: GameVaultSetup" "https://api.github.com/repos/$repo/releases?per_page=$count"
     $r = Json $json
     if (-not $r -or ($r -isnot [array] -and $r.message -and -not $r.tag_name)) { throw "could not read the release list of $repo (GitHub may be limiting requests; try again in an hour)" }
     # newest first by publishing time: GitHub's own order follows the date of the release's commit, which
@@ -125,8 +125,8 @@ function Releases($repo) {
     return @($r | Sort-Object { $_.published_at } -Descending)
 }
 # Newest release of a GitHub project that has a file matching $pattern: its version text and download address.
-function FromGitHub($repo, $pattern) {
-    foreach ($rel in (Releases $repo)) {
+function FromGitHub($repo, $pattern, $count = 5) {
+    foreach ($rel in (Releases $repo $count)) {
         $a = $rel.assets | Where-Object { $_.name -match $pattern } | Select-Object -First 1
         if ($a) {
             $ver = if ($a.name -match '(\d+(\.\d+)+)') { $Matches[1] } else { $rel.tag_name -replace '^[^\d]*', '' }
@@ -141,6 +141,11 @@ $components = @(
        Get = { FromGitHub "skitzellez/xbox-game-vault" '^GameVault_.*x64\.appx$' } },
     @{ Key = "xemu"; Title = "xemu (original Xbox)"; Prefix = "GamerDad.Xemu"; Game = $true
        Get = { FromGitHub "skitzellez/xemu-uwp" '^Xemu_.*x64\.appx$' } },
+    # Xbox 360: Xenia for Game Vault (Series X|S only): our build of DanP's Xenia Canary port. It reads 360 games
+    # from any USB drive through Game Vault and makes its own profile. A new install is started once (step 3).
+    @{ Key = "Xenia"; Title = "Xenia for Game Vault (Xbox 360)"; Prefix = "GamerDad.XeniaForGameVault"; Game = $true
+       SeriesOnly = $true; FirstStart = $true
+       Get = { FromGitHub "skitzellez/Xenia-GameVault" '^XeniaForGameVault_.*_x64\.appx$' } },
     # Series X|S: our builds (any USB drive, saves on it). Xbox One: the original ones, built for its older CPU.
     @{ Key = "RetroArch"; Title = "RetroArch (PlayStation, cartridge and CD systems)"; Game = $true
        Prefix = $(if ($series) { "GamerDad.RetroArchForGameVault" } else { "1e4cf179-f3c2-404f-b9f3-cb2070a5aad8" })
@@ -164,6 +169,7 @@ Head "2. What will be installed"
 $plan = @()
 foreach ($c in $components) {
     if ($Skip -contains $c.Key) { Say ("   {0,-52} left out (-Skip)" -f $c.Title); continue }
+    if ($c.SeriesOnly -and -not $series) { Say ("   {0,-52} needs an Xbox Series X|S" -f $c.Title) "DarkGray"; continue }
     try { $src = & $c.Get } catch { Say ("   {0,-52} cannot be checked: {1}" -f $c.Title, $_.Exception.Message) "Yellow"; continue }
     $have = Installed $c.Prefix
     $haveVer = if ($have) { "{0}.{1}.{2}.{3}" -f $have.Version.Major, $have.Version.Minor, $have.Version.Build, $have.Version.Revision } else { "" }
@@ -216,6 +222,7 @@ function InstallPackage($file, $dependency) {
 Head "3. Installing"
 $failed = @()
 if (-not $plan.Count) { Say "   nothing to install" "DarkGray" }
+$firstStart = @()   # new installs to start once (below)
 foreach ($p in $plan) {
     $c = $p.C; $src = $p.Src
     Say " - $($c.Title)" "White"
@@ -231,7 +238,7 @@ foreach ($p in $plan) {
         Say "   sending to the console and installing (large ones take a few minutes)"
         $r = InstallPackage $file (VcLibs)
         # believe the console's package list, not only its answer
-        if ($r.Success -and (Installed $c.Prefix)) { Say "   done" "Green" }
+        if ($r.Success -and (Installed $c.Prefix)) { Say "   done" "Green"; if ($c.FirstStart) { $firstStart += $c } }
         else { Say "   FAILED: $($r.Reason) $($r.CodeText)" "Red"; $failed += $c.Title }
     } catch { Say "   FAILED: $($_.Exception.Message)" "Red"; $failed += $c.Title }
 }
@@ -270,6 +277,17 @@ function StopApp($p) {
     Portal -X DELETE -H "X-CSRF-Token: $tok" "$B/api/taskmanager/app?package=$(B64 $p.PackageFullName)" -o NUL
 }
 function B64($s) { [uri]::EscapeDataString([Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($s))) }
+
+# A Device Portal install is ready only for the console's own account until the app is started once; until then
+# Game Vault cannot start it for the player (the console says 0x80070002). One start through the portal does it.
+foreach ($c in $firstStart) {
+    $p = Installed $c.Prefix
+    if (-not $p) { continue }
+    Say "   starting $($c.Title) once so the console makes it ready for you" "DarkGray"
+    StartApp $p
+    Start-Sleep -Seconds 10
+    StopApp $p
+}
 function Items($pfn, $dir) {
     $j = Json (Portal -m 60 "$B/api/filesystem/apps/files?knownfolderid=LocalAppData&packagefullname=$pfn&path=$(Enc $dir)")
     if ($j -and $j.Items) { return @($j.Items) }
@@ -518,7 +536,56 @@ else {
 }
 
 # ---------------------------------------------------------------------------------------------------
-Head "6. Two things to do on the console"
+# Games drives plugged into this PC. Our own builds read any drive through Game Vault, but other emulators
+# (Xenia for Xbox 360) open game files directly: on a drive that does not let apps read it, the console asks a
+# permission question it never shows and the emulator waits on a black screen. Read access for apps
+# ("ALL APPLICATION PACKAGES", S-1-15-2-1) fixes that for good. Nothing is erased; only NTFS drives have it.
+Head "6. Games drives on this PC"
+# needed on an Xbox One (the original emulators) or with the original Xenia Canary app only; on a Series X|S our
+# builds read every drive through Game Vault
+$needDrives = (-not $series) -or (-not (Installed "GamerDad.XeniaForGameVault") -and (Installed "27d6ba69-e4f1-4b69-b391-8238bab5a431"))
+$usb = @()
+if (-not $needDrives) {
+    Say "   not needed: Game Vault and its emulators read games from any USB drive" "DarkGray"
+} else {
+    try {
+        $usb = @(Get-Disk | Where-Object { $_.BusType -eq 'USB' } | Get-Partition | Get-Volume |
+                 Where-Object { $_.DriveLetter } | Sort-Object DriveLetter)
+    } catch { }
+    if (-not $usb.Count) {
+        Say "   No USB drive is plugged into this PC. To make a games drive ready, plug it in here and run the setup"
+        Say "   again (it only needs this once per drive)." "DarkGray"
+    }
+}
+foreach ($v in $usb) {
+    $root = "$($v.DriveLetter):\"
+    $label = if ($v.FileSystemLabel) { " `"$($v.FileSystemLabel)`"" } else { "" }
+    $size = "{0:N0} GB" -f ($v.Size / 1GB)
+    if ($v.FileSystem -ne 'NTFS') {
+        Say "   $root$label ($($v.FileSystem), $size): Xbox 360 games need an NTFS drive; the other systems play from it as it is." "DarkGray"
+        continue
+    }
+    $acl = (icacls $root 2>$null) -join "`n"
+    if ($acl -match 'ALL APPLICATION PACKAGES:\(OI\)\(CI\)') { Say "   $root$label ($size): ready" "DarkGray"; continue }
+    $ok = $Yes
+    if (-not $Yes) { $ok = (Read-Host "   $root$label ($size): let the Xbox apps read games on it? Nothing is erased. [Y/n]") -notmatch '^[nN]' }
+    if (-not $ok) { Say "   $root left as it is" "DarkGray"; continue }
+    Say "   $root giving apps read access (on a big drive this takes a minute)"
+    icacls $root /grant "*S-1-15-2-1:(OI)(CI)RX" /T /C /Q 2>$null | Out-Null
+    if (-not (((icacls $root 2>$null) -join "`n") -match 'ALL APPLICATION PACKAGES:\(OI\)\(CI\)')) {
+        # a drive's top folder usually belongs to the administrators: ask Windows once (its usual Yes/No window)
+        Say "   Windows asks for permission to change the drive: choose Yes in its window"
+        try {
+            Start-Process -FilePath "icacls.exe" -ArgumentList "$root /grant *S-1-15-2-1:(OI)(CI)RX /T /C /Q" `
+                -Verb RunAs -Wait -WindowStyle Hidden
+        } catch { }
+    }
+    if (((icacls $root 2>$null) -join "`n") -match 'ALL APPLICATION PACKAGES:\(OI\)\(CI\)') { Say "   $root ready" "Green" }
+    else { Say "   $root could not be changed (Windows said no, or the drive is read-only)" "Yellow" }
+}
+
+# ---------------------------------------------------------------------------------------------------
+Head "7. What to do on the console"
 Say "a) Give the apps full memory. In Dev Home > Games and apps, for each of these: select it, View details,"
 Say "   and change App type from App to Game:"
 foreach ($c in $components) { if (Installed $c.Prefix) { Say "      $($c.Title)" "White" } }
@@ -527,6 +594,11 @@ Say "   there is nothing to do: this setup turns on Dev Home's 'treat apps as ga
 if ($series) {
     Say "b) Put your games on any USB drive (FAT32, exFAT or NTFS) and plug it in. Game Vault makes a Game Vault"
     Say "   folder on it for your saves and BIOS files; new BIOS files go in Game Vault\bios."
+    if (-not (Installed "GamerDad.XeniaForGameVault") -and (Installed "27d6ba69-e4f1-4b69-b391-8238bab5a431")) {
+        # the original Xenia Canary port (installed by hand): it opens games itself and asks for a profile
+        Say "   With the original Xenia Canary app, Xbox 360 games need an NTFS drive that step 6 has prepared; open"
+        Say "   it once from Dev Home and choose Create Profile. Xenia for Game Vault (this setup) needs neither."
+    }
 } else {
     Say "b) Games go on a USB drive formatted NTFS, with access for apps. On this PC, with the drive as X: (the"
     Say "   first command erases the drive):"
