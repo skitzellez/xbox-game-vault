@@ -61,10 +61,11 @@ port of the original Xbox emulator **xemu**, and it sets up the other emulators 
 | Original Xbox | xemu for Dev Mode (ours) |
 | Xbox 360 (Series X\|S) | Xenia for Game Vault (ours, based on Xenia Canary) |
 | PlayStation, Saturn, Sega CD, Game Boy / Color / Advance, NES, SNES, N64, DS, Genesis and other cartridge and CD systems, ScummVM | RetroArch for Game Vault (ours, based on RetroArch) |
+| Arcade (MAME 2003-Plus and FinalBurn Neo sets, known by their .zip name), DOS (game .zip files, CD images in a `DOS` folder) | RetroArch for Game Vault (FinalBurn Neo, MAME 2003-Plus, DOSBox Pure) |
 | PlayStation 2 | XBSX2 for Game Vault (ours, based on XBSX2) |
-| GameCube, Wii | Dolphin for UWP |
+| GameCube, Wii, Triforce arcade | Dolphin for UWP |
 | PSP | PPSSPP |
-| Dreamcast | Flycast |
+| Dreamcast, Atomiswave, Sega NAOMI | Flycast |
 
 ## 🎮 Supported consoles
 
@@ -190,7 +191,7 @@ Game Vault has no account, no ads and no tracking. It connects to these places o
 | GameTDB and the libretro thumbnail server | Game names, box art, and the small preview pictures (title screen, a picture of the game) | Box art when a game is new to the library; preview pictures when you stop on a game, once |
 | Microsoft (download.xbox.com) | Box art of Xbox 360 games, asked for by the game's ID | When a 360 game is new to the library |
 | Your own PC or NAS (only the ones you add) | Signs in with the user name and password you typed on your phone, lists the shared folder, plays Xbox games straight from it, and copies other games to the console before they start | Only for network places you added (LT). The password stays on the Xbox, in the console's password vault: never in a file, a log or a report |
-| GitHub (raw.githubusercontent.com) | Game name lists (PlayStation 1 and 2, and the libretro database for Xbox and Xbox 360), Game Vault's own small fixes and notices, the check for the lowest supported Game Vault version, picture settings for xemu, and the shared shader warm-up lists (always the whole set, so it says nothing about your games) | Now and then, at start |
+| GitHub (raw.githubusercontent.com) | Game name lists (PlayStation 1 and 2, and the libretro database for Xbox, Xbox 360 and arcade sets), Game Vault's own small fixes and notices, the check for the lowest supported Game Vault version, picture settings for xemu, and the shared shader warm-up lists (always the whole set, so it says nothing about your games) | Now and then, at start |
 
 Reports are filed under a random code for the console and can only be read by the project's author. When you turn
 reports on, you can give your console a name (any name you like, or none) so its reports are easy to tell apart;
