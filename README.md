@@ -88,6 +88,7 @@ port of the original Xbox emulator **xemu**, and it sets up the other emulators 
 | GameCube, Wii, Triforce arcade | Dolphin for Game Vault (ours, based on the Xbox Dolphin by XboxEmulationHub) |
 | PSP | PPSSPP |
 | Dreamcast, Atomiswave, Sega NAOMI | Flycast |
+| Stream games from your PC (Sunshine) | Moonlight for Xbox |
 
 ## 🎮 Supported consoles
 
@@ -252,6 +253,8 @@ you can support it on **[Patreon](https://www.patreon.com/Skitzelles)**. ❤️
 - The [Orbitron](https://github.com/theleagueof/orbitron) font (SIL Open Font License).
 - LZMA SDK (public domain), UnRAR (freeware licence) and Project Nayuki's
   [QR Code generator](https://github.com/nayuki/QR-Code-generator) (MIT).
+- [Moonlight for Xbox](https://github.com/TheElixZammuto/moonlight-xbox) by TheElixZammuto (GPL-3.0), installed by the
+  setup from its own releases (not included in ours).
 - [libsmb2](https://github.com/sahlberg/libsmb2) by Ronnie Sahlberg (LGPL-2.1) for network games, shipped as the
   separate `smb2.dll`; its source (version 6.2, with our build files) is attached to every release.
 
