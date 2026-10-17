@@ -111,11 +111,8 @@ Doing it by hand instead, or building from source: see **[docs/DEVELOPER.md](doc
 | RB (in an Xbox game's details) | Picture: fill the screen, or keep the game's own shape |
 | LT (in an Xbox game's details) | Auto quality on or off. On (the default): when the console can't keep up at your render scale, xemu steps it down for a while and says so on screen. Off: your render scale exactly, for testing high upscaling. Changing the scale in xemu's own menu also leaves it as you set it for that session |
 | B | Back |
-| Y | Look for games again |
-| View | Play or copy the disc in the console's drive |
-| Menu | Problem reports on or off (see [Privacy](#-privacy-what-game-vault-sends)) |
-| RT | Updates: install new versions with your phone, or see that everything is up to date |
-| LT | Network games: add a PC's shared folder or a NAS with your phone (scan the code on screen) |
+| Menu | **Options**: language (English, Português, Español, Français, Deutsch, Italiano; follows the console by itself), problem reports on or off (see [Privacy](#-privacy-what-game-vault-sends)), console name, network games, updates, the disc in the drive, look for games again |
+| Shortcuts | Y look for games again, View the disc in the drive, RT updates, LT network games |
 
 **In xemu (original Xbox)**
 
