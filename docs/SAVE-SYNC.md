@@ -48,7 +48,9 @@ Menu button → **Options** → **Save sync** → pick your PC with ◀ ▶. Gam
    Syncthing, and share it with the handheld.
 3. On the handheld, accept each folder and point it at the emulator's own folder:
    - PCSX2-based apps (ARMSX2 ...): the **memory card folder** shown in the app's settings.
-   - RetroArch: the **save files** folder (Settings → Directory → Save Files).
+   - RetroArch: the **save files** folder (Settings → Directory → Save Files), and turn on Settings → Saving →
+     **Sort Saves into Folders by Core Name**: RetroArch for Game Vault keeps each core's saves in its own folder
+     (`saves\mGBA`, `saves\SwanStation` ...).
 4. Use the same memory card file names on both: the Xbox uses `Mcd001.ps2` and `Mcd002.ps2` by default.
 
 Play on one device at a time and give it a moment to sync before switching. If you do play the same game on both

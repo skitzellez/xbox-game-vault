@@ -147,6 +147,9 @@ The console keeps a backup of your BIOS files, saves, memory cards and the newes
 a new stick, copy your games on and start Game Vault: the rest comes back by itself. Copying the `Game Vault`
 folder to a PC now and then is still a good idea, in case the stick and the console are both lost.
 
+**Save sync** (Options → Save sync) keeps `saves` and `memory cards` the same as a folder on your PC or NAS, and
+from there on an Android handheld too (ARMSX2, RetroArch): **[docs/SAVE-SYNC.md](docs/SAVE-SYNC.md)**.
+
 ## 🔄 Updating
 
 Run **GameVault-Setup.zip** from the newest [release](https://github.com/skitzellez/xbox-game-vault/releases/latest)
