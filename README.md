@@ -2,27 +2,49 @@
   <img src="GameVault/art/logo-banner.png" alt="Game Vault" width="720">
 </p>
 
+<h3 align="center">Every game. One vault.</h3>
+
 <p align="center">
-  <b>Game Vault: plug in a USB stick, pick a game, play.</b><br>
-  An all-in-one game library for Xbox Series X|S in Dev Mode, made for the TV and the controller.<br>
-  <b>Early software: expect rough edges, and tell us about them.</b>
+  <b>Plug in a USB stick, pick a game, play.</b><br>
+  The all-in-one game library for <b>Xbox Series X|S</b> in Dev Mode: original Xbox, Xbox 360, PlayStation 1 and 2,
+  GameCube, Wii, Dreamcast, arcade and many classic systems, made for the TV and the controller.
 </p>
 
 <p align="center">
-  <a href="https://github.com/skitzellez/xbox-game-vault/releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/skitzellez/xbox-game-vault?include_prereleases&label=release&color=107C10"></a>
-  <a href="https://github.com/skitzellez/xbox-game-vault/releases"><img alt="Downloads" src="https://img.shields.io/github/downloads/skitzellez/xbox-game-vault/total?color=0B7DDA"></a>
+  <a href="https://github.com/skitzellez/xbox-game-vault/releases/latest"><img alt="Download Game Vault" src="https://img.shields.io/badge/DOWNLOAD-Game%20Vault-107C10?style=for-the-badge&logo=xbox&logoColor=white"></a>
+  &nbsp;
+  <a href="#-installation"><img alt="How to install" src="https://img.shields.io/badge/HOW%20TO-INSTALL-0B7DDA?style=for-the-badge"></a>
+  &nbsp;
+  <a href="https://www.patreon.com/Skitzelles"><img alt="Support on Patreon" src="https://img.shields.io/badge/SUPPORT-Patreon-F96854?style=for-the-badge&logo=patreon&logoColor=white"></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/skitzellez/xbox-game-vault/releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/skitzellez/xbox-game-vault?label=latest&color=107C10"></a>
+  <a href="https://github.com/skitzellez/xbox-game-vault/releases"><img alt="Game Vault downloads" src="https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fskitzellez%2Fgame-vault-updates%2Fmain%2Fbadges%2Fdownloads.json"></a>
+  <a href="#-related-projects"><img alt="Downloads of Game Vault and its emulators" src="https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fskitzellez%2Fgame-vault-updates%2Fmain%2Fbadges%2Fdownloads-all.json"></a>
+  <a href="https://github.com/skitzellez/xbox-game-vault/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/skitzellez/xbox-game-vault?color=F5C518&logo=github"></a>
   <a href="LICENSE"><img alt="License: PolyForm Noncommercial" src="https://img.shields.io/badge/license-PolyForm%20Noncommercial-blue"></a>
-  <img alt="Platform: Xbox Dev Mode" src="https://img.shields.io/badge/platform-Xbox%20Dev%20Mode-107C10?logo=xbox&logoColor=white">
   <img alt="Status: early" src="https://img.shields.io/badge/status-early-orange">
-  <a href="https://www.patreon.com/Skitzelles"><img alt="Patreon" src="https://img.shields.io/badge/Patreon-Skitzelles-F96854?logo=patreon&logoColor=white"></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/skitzellez/xbox-game-vault/releases"><b>⬇️ Download</b></a> &nbsp;•&nbsp;
-  <a href="#-installation"><b>🚀 Install</b></a> &nbsp;•&nbsp;
-  <a href="#-reporting-a-problem"><b>🐞 Report a problem</b></a> &nbsp;•&nbsp;
-  <a href="https://www.patreon.com/Skitzelles"><b>❤️ Support</b></a>
+  <img src="GameVault/art/screens/library.jpg" alt="The Game Vault library on the TV: an Xbox shelf of box art" width="900">
 </p>
+
+<table align="center">
+  <tr>
+    <td align="center" width="33%"><h3>🔌 1. Plug in</h3>Any USB stick, any folders, any names. FAT32, exFAT or NTFS.</td>
+    <td align="center" width="33%"><h3>🎯 2. Pick</h3>Names, box art and previews fill in by themselves.</td>
+    <td align="center" width="33%"><h3>▶️ 3. Play</h3>Press A. The right emulator starts, already set up.</td>
+  </tr>
+</table>
+
+<p align="center">
+  <img src="GameVault/art/screens/playstation.jpg" alt="PlayStation shelf with a gameplay preview" width="32%">
+  <img src="GameVault/art/screens/playstation2.jpg" alt="PlayStation 2 shelf" width="32%">
+  <img src="GameVault/art/screens/gamecube.jpg" alt="GameCube shelf" width="32%">
+</p>
+<p align="center"><sub>Every console gets its own colours, moving background and a live preview of the game you are on.</sub></p>
 
 ---
 
@@ -72,7 +94,7 @@ port of the original Xbox emulator **xemu**, and it sets up the other emulators 
 | Console | Status | Notes |
 |---|---|---|
 | **Xbox Series X** | Recommended | Where Game Vault is built and tested. |
-| Xbox Series S | Should work | Less memory and a slower GPU; not tested yet. |
+| Xbox Series S | Works | Played by testers. Less memory and a slower GPU, so the newest systems ask more of it. |
 | Xbox One family | Not recommended | Untested; likely too slow for the newer systems. |
 
 All of them need **Developer Mode**. Game Vault does not run in retail mode.
