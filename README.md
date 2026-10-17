@@ -108,6 +108,8 @@ Doing it by hand instead, or building from source: see **[docs/DEVELOPER.md](doc
 | A | Play |
 | X | Game details (system, which emulator, what it still needs) |
 | LB (in an Xbox game's details) | Play with a fresh game cache, if a game says the disc may be dirty |
+| RB (in an Xbox game's details) | Picture: fill the screen, or keep the game's own shape |
+| LT (in an Xbox game's details) | Auto quality on or off. On (the default): when the console can't keep up at your render scale, xemu steps it down for a while and says so on screen. Off: your render scale exactly, for testing high upscaling. Changing the scale in xemu's own menu also leaves it as you set it for that session |
 | B | Back |
 | Y | Look for games again |
 | View | Play or copy the disc in the console's drive |
@@ -183,7 +185,7 @@ Game Vault has no account, no ads and no tracking. It connects to these places o
 
 | Where | What for | When |
 |---|---|---|
-| Skitzelles' private report storage (Backblaze B2) | Problem reports: the session logs of the games you played (game file name, speed, memory, the buttons held, what happened, crash details, the console model) and Game Vault's own log; after a crash, also the last few small pictures of the screen (320x240) from before it | **Only if you said yes**; turn it off any time with **Menu** |
+| Skitzelles' private report storage (Backblaze B2) | Problem reports: the session logs of the games you played (game file name, speed, memory, the buttons held, what happened, crash details, the console model), Game Vault's own log, and XBSX2's and RetroArch's own logs of their last session (game file name, settings, error messages); after a crash, also the last few small pictures of the screen (320x240) from before it | **Only if you said yes**; turn it off any time with **Menu** |
 | GameTDB and the libretro thumbnail server | Game names, box art, and the small preview pictures (title screen, a picture of the game) | Box art when a game is new to the library; preview pictures when you stop on a game, once |
 | Microsoft (download.xbox.com) | Box art of Xbox 360 games, asked for by the game's ID | When a 360 game is new to the library |
 | GitHub (raw.githubusercontent.com) | Game name lists (PlayStation 1 and 2, and the libretro database for Xbox and Xbox 360), Game Vault's own small fixes and notices, the check for the lowest supported Game Vault version, picture settings for xemu, and the shared shader warm-up lists (always the whole set, so it says nothing about your games) | Now and then, at start |
