@@ -180,7 +180,7 @@ foreach ($c in $components) {
     } else {
         $what = if ($have) { "update $haveVer -> $($src.Version)" } else { "install $($src.Version)" }
         Say ("   {0,-52} {1}, {2} MB" -f $c.Title, $what, $src.Size) "White"
-        $plan += @{ C = $c; Src = $src }
+        $plan += @{ C = $c; Src = $src; New = -not $have }
     }
 }
 if ($plan.Count -and -not $Yes) {
@@ -223,6 +223,7 @@ Head "3. Installing"
 $failed = @()
 if (-not $plan.Count) { Say "   nothing to install" "DarkGray" }
 $firstStart = @()   # new installs to start once (below)
+$fresh = @()        # apps this run installed for the first time
 foreach ($p in $plan) {
     $c = $p.C; $src = $p.Src
     Say " - $($c.Title)" "White"
@@ -238,7 +239,11 @@ foreach ($p in $plan) {
         Say "   sending to the console and installing (large ones take a few minutes)"
         $r = InstallPackage $file (VcLibs)
         # believe the console's package list, not only its answer
-        if ($r.Success -and (Installed $c.Prefix)) { Say "   done" "Green"; if ($c.FirstStart) { $firstStart += $c } }
+        if ($r.Success -and (Installed $c.Prefix)) {
+            Say "   done" "Green"
+            if ($c.FirstStart) { $firstStart += $c }
+            if ($p.New) { $fresh += $c.Key }
+        }
         else { Say "   FAILED: $($r.Reason) $($r.CodeText)" "Red"; $failed += $c.Title }
     } catch { Say "   FAILED: $($_.Exception.Message)" "Red"; $failed += $c.Title }
 }
@@ -262,7 +267,8 @@ function PutFile($pfn, $dir, $file, $as) {
     $tmp = Join-Path $work "upload"; New-Item -ItemType Directory -Force $tmp | Out-Null
     $copy = Join-Path $tmp $as; Copy-Item -LiteralPath $file $copy -Force
     $tok = Token
-    $code = Portal -m 600 -H "X-CSRF-Token: $tok" -H "Expect:" -F "f=@$copy" "$B/api/filesystem/apps/file?knownfolderid=LocalAppData&packagefullname=$pfn&path=$(Enc $dir)" -o NUL -w "%{http_code}"
+    # quoted: a comma or semicolon in the name would cut it up
+    $code = Portal -m 600 -H "X-CSRF-Token: $tok" -H "Expect:" -F "f=@`"$($copy -replace '\\', '/')`"" "$B/api/filesystem/apps/file?knownfolderid=LocalAppData&packagefullname=$pfn&path=$(Enc $dir)" -o NUL -w "%{http_code}"
     Remove-Item -LiteralPath $copy
     return $code -eq "200"
 }
@@ -326,12 +332,17 @@ function CopyAppData($from, $to, [string[]]$names) {
     }
     return $count
 }
-# The new app's own storage exists once it has run; its first settings file makes way for the old one.
-function MoveOver($oldPrefix, $newPrefix, $title, $settingsDir, $settingsFile, [string[]]$names) {
+# Only into a new app this run installed for the first time: one already in use keeps its own settings (they
+# would be replaced by the old app's). A mark in the new app's own storage says it was done, so a second
+# computer or a cleared cache never does it again. The new app's storage exists once it has run; its first
+# settings file makes way for the old one.
+function MoveOver($key, $oldPrefix, $newPrefix, $title, $settingsDir, $settingsFile, [string[]]$names) {
+    if ($fresh -notcontains $key) { return }
     $old = Installed $oldPrefix; $new = Installed $newPrefix
     if (-not $old -or -not $new) { return }
     $done = Join-Path $work "moved-$newPrefix.txt"
     if (Test-Path -LiteralPath $done) { return }
+    if (Items $new.PackageFullName '\LocalState' | Where-Object { $_.Name -eq "gamevault-moved.txt" }) { return }
     Say " - $title"
     if (-not (Items $new.PackageFullName '\LocalState').Count) {
         StartApp $new; Start-Sleep -Seconds 12; StopApp $new; Start-Sleep -Seconds 2
@@ -341,11 +352,12 @@ function MoveOver($oldPrefix, $newPrefix, $title, $settingsDir, $settingsFile, [
     $n = CopyAppData $old $new $names
     Say "   $n files copied from the original app (it stays installed; you can remove it in Dev Home)" "Green"
     Set-Content -LiteralPath $done -Value (Get-Date)
+    PutFile $new.PackageFullName '\LocalState' $done "gamevault-moved.txt" | Out-Null
 }
 if ($series) {
     Head "3b. Moving over what the original apps had"
-    MoveOver "1e4cf179-f3c2-404f-b9f3-cb2070a5aad8" "GamerDad.RetroArchForGameVault" "RetroArch: settings, saves, states, BIOS files" '\LocalState' "retroarch.cfg" @("retroarch.cfg", "config", "saves", "states", "system", "playlists")
-    MoveOver "595c25f0-b370-4d7a-9b14-3027fbd69ecf" "GamerDad.XBSX2ForGameVault" "XBSX2: settings, BIOS files, memory cards, states" '\LocalState\inis' "PCSX2.ini" @("inis", "bios", "memcards", "sstates", "gamesettings", "inputprofiles")
+    MoveOver "RetroArch" "1e4cf179-f3c2-404f-b9f3-cb2070a5aad8" "GamerDad.RetroArchForGameVault" "RetroArch: settings, saves, states, BIOS files" '\LocalState' "retroarch.cfg" @("retroarch.cfg", "config", "saves", "states", "system", "playlists")
+    MoveOver "XBSX2" "595c25f0-b370-4d7a-9b14-3027fbd69ecf" "GamerDad.XBSX2ForGameVault" "XBSX2: settings, BIOS files, memory cards, states" '\LocalState\inis' "PCSX2.ini" @("inis", "bios", "memcards", "sstates", "gamesettings", "inputprofiles")
 }
 
 Head "4. BIOS files"
