@@ -63,7 +63,7 @@ port of the original Xbox emulator **xemu**, and it sets up the other emulators 
 | PlayStation, Saturn, Sega CD, Game Boy / Color / Advance, NES, SNES, N64, DS, Genesis and other cartridge and CD systems, ScummVM | RetroArch for Game Vault (ours, based on RetroArch) |
 | Arcade (MAME 2003-Plus and FinalBurn Neo sets, known by their .zip name), DOS (game .zip files, CD images in a `DOS` folder) | RetroArch for Game Vault (FinalBurn Neo, MAME 2003-Plus, DOSBox Pure) |
 | PlayStation 2 | XBSX2 for Game Vault (ours, based on XBSX2) |
-| GameCube, Wii, Triforce arcade | Dolphin for UWP |
+| GameCube, Wii, Triforce arcade | Dolphin for Game Vault (ours, based on the Xbox Dolphin by XboxEmulationHub) |
 | PSP | PPSSPP |
 | Dreamcast, Atomiswave, Sega NAOMI | Flycast |
 
@@ -159,7 +159,7 @@ the library. Press **RT** and Game Vault shows two QR codes: the first downloads
 second opens your Xbox's Device Portal (the phone must be on the same network as the Xbox). In the Device Portal, tap
 **Add** under *My games & apps*, choose the downloaded file, then **Next** and **Start**. When several are out, the
 emulators come first and Game Vault last (**RB** goes to the next one). Your games, saves and settings are kept.
-Dolphin, PPSSPP and Flycast still update through the setup on a PC or Mac.
+PPSSPP and Flycast still update through the setup on a PC or Mac.
 
 ## 🐞 Reporting a problem
 

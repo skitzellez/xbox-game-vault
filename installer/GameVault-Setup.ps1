@@ -151,8 +151,10 @@ $components = @(
        Prefix = $(if ($series) { "GamerDad.RetroArchForGameVault" } else { "1e4cf179-f3c2-404f-b9f3-cb2070a5aad8" })
        Get = { if ($series) { FromGitHub "skitzellez/RetroArch-GameVault" '^RetroArch-for-GameVault_.*x64\.appx$' }
                else { $r = FromGitHub "XboxEmulationHub/RetroArch" '^RetroArch-XboxOne-AllCores\.appx$'; $r.Version = ""; $r } } },
-    @{ Key = "Dolphin"; Title = "Dolphin (GameCube, Wii)"; Prefix = "3143e227-cbe5-41c4-aaa9-cf40132a1b22"; Game = $true
-       Get = { FromGitHub "XboxEmulationHub/dolphin" '\.msix$' } },
+    # Dolphin for Game Vault: the Xbox Dolphin 1.1.9 with Game Vault's fix (games started from Game Vault no longer
+    # crash back to Dev Home); its own link, so an original Dolphin installed by hand stays as it is.
+    @{ Key = "Dolphin"; Title = "Dolphin for Game Vault (GameCube, Wii)"; Prefix = "GamerDad.DolphinForGameVault"; Game = $true
+       Get = { FromGitHub "skitzellez/Dolphin-GameVault" '^DolphinForGameVault_.*_x64\.appx$' } },
     @{ Key = "XBSX2"; Title = "XBSX2 (PlayStation 2)"; Game = $true
        Prefix = $(if ($series) { "GamerDad.XBSX2ForGameVault" } else { "595c25f0-b370-4d7a-9b14-3027fbd69ecf" })
        Get = { if ($series) { FromGitHub "skitzellez/XBSX2-GameVault" '^XBSX2-for-GameVault_.*\.msixbundle$' }
@@ -359,6 +361,8 @@ if ($series) {
     MoveOver "RetroArch" "1e4cf179-f3c2-404f-b9f3-cb2070a5aad8" "GamerDad.RetroArchForGameVault" "RetroArch: settings, saves, states, BIOS files" '\LocalState' "retroarch.cfg" @("retroarch.cfg", "config", "saves", "states", "system", "playlists")
     MoveOver "XBSX2" "595c25f0-b370-4d7a-9b14-3027fbd69ecf" "GamerDad.XBSX2ForGameVault" "XBSX2: settings, BIOS files, memory cards, states" '\LocalState\inis' "PCSX2.ini" @("inis", "bios", "memcards", "sstates", "gamesettings", "inputprofiles")
 }
+# every console: Dolphin for Game Vault takes the place of the original Dolphin (memory cards, Wii saves, states)
+MoveOver "Dolphin" "3143e227-cbe5-41c4-aaa9-cf40132a1b22" "GamerDad.DolphinForGameVault" "Dolphin: settings, memory cards, Wii saves, states" '\LocalState\Config' "Dolphin.ini" @("Config", "GC", "Wii", "StateSaves", "GameSettings")
 
 Head "4. BIOS files"
 $ra = (Installed $(if ($series) { "GamerDad.RetroArchForGameVault" } else { "1e4cf179-f3c2-404f-b9f3-cb2070a5aad8" })).PackageFullName

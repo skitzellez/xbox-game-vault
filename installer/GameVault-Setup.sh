@@ -186,7 +186,7 @@ comp() {
         # Series X|S: our builds (any USB drive, saves on it). Xbox One: the original ones, built for its older CPU.
         RetroArch) C_TITLE="RetroArch (PlayStation, cartridge and CD systems)"
                    if [ -n "$series" ]; then C_PREFIX="GamerDad.RetroArchForGameVault"; else C_PREFIX="1e4cf179-f3c2-404f-b9f3-cb2070a5aad8"; fi ;;
-        Dolphin) C_TITLE="Dolphin (GameCube, Wii)"; C_PREFIX="3143e227-cbe5-41c4-aaa9-cf40132a1b22" ;;
+        Dolphin) C_TITLE="Dolphin for Game Vault (GameCube, Wii)"; C_PREFIX="GamerDad.DolphinForGameVault" ;;
         XBSX2) C_TITLE="XBSX2 (PlayStation 2)"
                if [ -n "$series" ]; then C_PREFIX="GamerDad.XBSX2ForGameVault"; else C_PREFIX="595c25f0-b370-4d7a-9b14-3027fbd69ecf"; fi ;;
         PPSSPP) C_TITLE="PPSSPP (PSP)"; C_PREFIX="0ad29e1a-1069-4cf5-8c97-620892505f0c" ;;
@@ -202,7 +202,7 @@ comp_get() {
         Xenia) from_github "skitzellez/Xenia-GameVault" '^XeniaForGameVault_.*_x64\.appx$' ;;
         RetroArch) if [ -n "$series" ]; then from_github "skitzellez/RetroArch-GameVault" '^RetroArch-for-GameVault_.*x64\.appx$'
                    else from_github "XboxEmulationHub/RetroArch" '^RetroArch-XboxOne-AllCores\.appx$' && S_VER=""; fi ;;
-        Dolphin) from_github "XboxEmulationHub/dolphin" '\.msix$' ;;
+        Dolphin) from_github "skitzellez/Dolphin-GameVault" '^DolphinForGameVault_.*_x64\.appx$' ;;
         XBSX2) if [ -n "$series" ]; then from_github "skitzellez/XBSX2-GameVault" '^XBSX2-for-GameVault_.*\.msixbundle$'
                else from_github "XboxEmulationHub/XBSX2" 'SSE4\.msixbundle$'; fi ;;
         PPSSPP) releases "hrydgard/ppsspp"
@@ -419,6 +419,8 @@ if [ -n "$series" ]; then
     move_over RetroArch "1e4cf179-f3c2-404f-b9f3-cb2070a5aad8" "GamerDad.RetroArchForGameVault" "RetroArch: settings, saves, states, BIOS files" '\LocalState' "retroarch.cfg" retroarch.cfg config saves states system playlists
     move_over XBSX2 "595c25f0-b370-4d7a-9b14-3027fbd69ecf" "GamerDad.XBSX2ForGameVault" "XBSX2: settings, BIOS files, memory cards, states" '\LocalState\inis' "PCSX2.ini" inis bios memcards sstates gamesettings inputprofiles
 fi
+# every console: Dolphin for Game Vault takes the place of the original Dolphin (memory cards, Wii saves, states)
+move_over Dolphin "3143e227-cbe5-41c4-aaa9-cf40132a1b22" "GamerDad.DolphinForGameVault" "Dolphin: settings, memory cards, Wii saves, states" '\LocalState\Config' "Dolphin.ini" Config GC Wii StateSaves GameSettings
 
 head_ "4. BIOS files"
 comp RetroArch; ra="";      installed "$C_PREFIX" && ra="$P_FULL"
