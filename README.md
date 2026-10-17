@@ -115,6 +115,7 @@ Doing it by hand instead, or building from source: see **[docs/DEVELOPER.md](doc
 | View | Play or copy the disc in the console's drive |
 | Menu | Problem reports on or off (see [Privacy](#-privacy-what-game-vault-sends)) |
 | RT | Updates: install new versions with your phone, or see that everything is up to date |
+| LT | Network games: add a PC's shared folder or a NAS with your phone (scan the code on screen) |
 
 **In xemu (original Xbox)**
 
@@ -188,10 +189,12 @@ Game Vault has no account, no ads and no tracking. It connects to these places o
 | Skitzelles' private report storage (Backblaze B2) | Problem reports: the session logs of the games you played (game file name, speed, memory, the buttons held, what happened, crash details, the console model), Game Vault's own log, and XBSX2's and RetroArch's own logs of their last session (game file name, settings, error messages); after a crash, also the last few small pictures of the screen (320x240) from before it | **Only if you said yes**; turn it off any time with **Menu** |
 | GameTDB and the libretro thumbnail server | Game names, box art, and the small preview pictures (title screen, a picture of the game) | Box art when a game is new to the library; preview pictures when you stop on a game, once |
 | Microsoft (download.xbox.com) | Box art of Xbox 360 games, asked for by the game's ID | When a 360 game is new to the library |
+| Your own PC or NAS (only the ones you add) | Signs in with the user name and password you typed on your phone, lists the shared folder, plays Xbox games straight from it, and copies other games to the console before they start | Only for network places you added (LT). The password stays on the Xbox, in the console's password vault: never in a file, a log or a report |
 | GitHub (raw.githubusercontent.com) | Game name lists (PlayStation 1 and 2, and the libretro database for Xbox and Xbox 360), Game Vault's own small fixes and notices, the check for the lowest supported Game Vault version, picture settings for xemu, and the shared shader warm-up lists (always the whole set, so it says nothing about your games) | Now and then, at start |
 
-Reports are filed under a random code for the console, not a name, and can only be read by the project's
-author. Nothing else on the console or the USB drive is sent: no saves, no game files, no BIOS files. The
+Reports are filed under a random code for the console and can only be read by the project's author. When you turn
+reports on, you can give your console a name (any name you like, or none) so its reports are easy to tell apart;
+that name goes with the reports and nowhere else. Nothing else on the console or the USB drive is sent: no saves, no game files, no BIOS files. The
 emulators themselves do not connect to anything unless a game goes online.
 
 ## 🔗 Related projects
@@ -223,6 +226,8 @@ you can support it on **[Patreon](https://www.patreon.com/Skitzelles)**. ❤️
 - The [Orbitron](https://github.com/theleagueof/orbitron) font (SIL Open Font License).
 - LZMA SDK (public domain), UnRAR (freeware licence) and Project Nayuki's
   [QR Code generator](https://github.com/nayuki/QR-Code-generator) (MIT).
+- [libsmb2](https://github.com/sahlberg/libsmb2) by Ronnie Sahlberg (LGPL-2.1) for network games, shipped as the
+  separate `smb2.dll`; its source (version 6.2, with our build files) is attached to every release.
 
 ## 📜 Licence
 
