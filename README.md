@@ -226,6 +226,8 @@ emulators themselves do not connect to anything unless a game goes online.
 
 ## 🔗 Related projects
 
+- [Game Vault for Android](https://github.com/skitzellez/game-vault-android) (beta): the same game library for phones,
+  tablets and Android TV.
 - [xemu-uwp](https://github.com/skitzellez/xemu-uwp): our port of xemu to Xbox Dev Mode (source, branch `uwp`).
 - [RetroArch for Game Vault](https://github.com/skitzellez/RetroArch-GameVault) and
   [XBSX2 for Game Vault](https://github.com/skitzellez/XBSX2-GameVault): our builds, which read any USB drive and
