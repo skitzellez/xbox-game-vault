@@ -1,7 +1,8 @@
 # Setting up Game Vault from a Mac (BETA)
 
-> ⚠️ **BETA: new and not yet tested on a real Mac.** The Mac setup does the same job as the Windows setup and
-> has been tested against an Xbox Series X, but not yet run on a Mac. If something goes wrong, nothing on your
+> ⚠️ **BETA.** The Mac setup does the same job as the Windows setup. **Tested on a real Mac:** a 2019 MacBook Air
+> (Intel) with **macOS Sonoma 14.7** set up an Xbox Series X without problems. Other Macs and macOS versions
+> should work the same way but are not confirmed yet. If something goes wrong, nothing on your
 > Mac or your Xbox is erased. You can run it again, or use a Windows PC instead. Please tell us how it went
 > (see [Reporting a problem](#reporting-a-problem)).
 

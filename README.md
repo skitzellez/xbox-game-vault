@@ -115,7 +115,7 @@ All of them need **Developer Mode**. Game Vault does not run in retail mode.
    Access Settings). Make sure a profile is signed in.
 2. Download **GameVault-Setup.zip** from [Releases](https://github.com/skitzellez/xbox-game-vault/releases/latest) and unzip it.
    - **Windows:** double-click **Install Game Vault.bat**.
-   - **Mac (BETA, new and not yet tested on a real Mac):** download **GameVault-Setup-Mac-BETA.zip** from the
+   - **Mac (BETA, tested on macOS Sonoma 14.7):** download **GameVault-Setup-Mac-BETA.zip** from the
      [Mac setup beta](https://github.com/skitzellez/xbox-game-vault/releases/tag/mac-setup-beta-1) and follow
      the step-by-step guide: **[docs/MAC-SETUP.md](docs/MAC-SETUP.md)**.
 3. Type in the console's address, user name and password. The setup installs Game Vault, xemu and the
