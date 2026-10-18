@@ -5,7 +5,8 @@
 #
 # What it does, through the console's Device Portal:
 #   1. installs or updates Game Vault and xemu (from their GitHub releases) and the emulators Game Vault starts:
-#      RetroArch, Dolphin, XBSX2, PPSSPP, Flycast and (Series X|S) Xenia for Game Vault. On a Series X|S, RetroArch and XBSX2 are our own builds
+#      RetroArch, Dolphin, XBSX2, PPSSPP, Flycast, (Series X|S) Xenia for Game Vault, and Moonlight for streaming
+#      games from your PC. On a Series X|S, RetroArch and XBSX2 are our own builds
 #      ("RetroArch for Game Vault", "XBSX2 for Game Vault": any USB drive works, saves live on it), and what the
 #      original RetroArch / XBSX2 apps held (settings, saves, states, BIOS files, memory cards) is copied over;
 #      the others come from their own projects;
@@ -142,9 +143,9 @@ $components = @(
     @{ Key = "xemu"; Title = "xemu (original Xbox)"; Prefix = "GamerDad.Xemu"; Game = $true
        Get = { FromGitHub "skitzellez/xemu-uwp" '^Xemu_.*x64\.appx$' } },
     # Xbox 360: Xenia for Game Vault (Series X|S only): our build of DanP's Xenia Canary port. It reads 360 games
-    # from any USB drive through Game Vault and makes its own profile. A new install is started once (step 3).
+    # from any USB drive through Game Vault and makes its own profile.
     @{ Key = "Xenia"; Title = "Xenia for Game Vault (Xbox 360)"; Prefix = "GamerDad.XeniaForGameVault"; Game = $true
-       SeriesOnly = $true; FirstStart = $true
+       SeriesOnly = $true
        Get = { FromGitHub "skitzellez/Xenia-GameVault" '^XeniaForGameVault_.*_x64\.appx$' } },
     # Series X|S: our builds (any USB drive, saves on it). Xbox One: the original ones, built for its older CPU.
     @{ Key = "RetroArch"; Title = "RetroArch (PlayStation, cartridge and CD systems)"; Game = $true
@@ -163,7 +164,19 @@ $components = @(
        Get = { $tag = ((Releases "hrydgard/ppsspp") | Where-Object { -not $_.prerelease } | Select-Object -First 1).tag_name -replace '^v', ''
                @{ Url = "https://www.ppsspp.org/files/$($tag -replace '\.', '_')/ppsspp_uwp.zip"; Name = "ppsspp_uwp_$tag.zip"; Version = $tag; Size = 28; Zip = $true } } },
     @{ Key = "Flycast"; Title = "Flycast (Dreamcast)"; Prefix = "AF75D068-D5AC-3D3C-B52A-2791C2F3491A"; Game = $true
-       Get = { FromGitHub "flyinghead/flycast" '^flycast-.*\.appx$' } }
+       Get = { FromGitHub "flyinghead/flycast" '^flycast-.*\.appx$' } },
+    # Moonlight (TheElixZammuto/moonlight-xbox, GPL-3.0, not ours): streams games from a PC running Sunshine or
+    # GeForce Experience. Its Dev Mode build also needs Microsoft's XAML runtime, which comes in the same release.
+    @{ Key = "Moonlight"; Title = "Moonlight (stream games from your PC)"; Prefix = "50497EliaZammuto.MoonlightUWP"
+       Get = { $pkg = '^moonlight-xbox-dx_.*_x64\.msixbundle$'; $xaml = '^Microsoft\.UI\.Xaml\..*\.appx$'
+               $rel = Releases "TheElixZammuto/moonlight-xbox" | Where-Object { ($_.assets.name -match $pkg) -and ($_.assets.name -match $xaml) } |
+                      Select-Object -First 1
+               if (-not $rel) { throw "no Dev Mode build in the releases of TheElixZammuto/moonlight-xbox" }
+               $a = $rel.assets | Where-Object { $_.name -match $pkg } | Select-Object -First 1
+               $x = $rel.assets | Where-Object { $_.name -match $xaml } | Select-Object -First 1
+               $ver = if ($a.name -match '(\d+(\.\d+)+)') { $Matches[1] } else { $rel.tag_name }
+               @{ Url = $a.browser_download_url; Name = $a.name; Version = $ver; Size = [int]($a.size / 1MB)
+                  Extra = @{ Url = $x.browser_download_url; Name = $x.name } } } }
 )
 
 # ---------------------------------------------------------------------------------------------------
@@ -206,10 +219,11 @@ function Unpack($zip) {
     return $dir
 }
 
-function InstallPackage($file, $dependency) {
+function InstallPackage($file, [string[]]$dependencies) {   # the runtime packages it needs go with it
     $tok = Token
     $form = @("-F", "f=@$file")
-    if ($dependency) { $form += @("-F", "dep=@$dependency") }
+    $i = 0
+    foreach ($d in $dependencies) { if ($d) { $form += @("-F", "dep$(if ($i) { $i })=@$d"); $i++ } }
     $name = [uri]::EscapeDataString((Split-Path -Leaf $file))
     Portal -m 1800 -H "X-CSRF-Token: $tok" -H "Expect:" @form "$B/api/app/packagemanager/package?package=$name" -o NUL
     for ($i = 0; $i -lt 300; $i++) {
@@ -239,11 +253,14 @@ foreach ($p in $plan) {
             if (-not $file) { throw "no package found inside the download" }
         }
         Say "   sending to the console and installing (large ones take a few minutes)"
-        $r = InstallPackage $file (VcLibs)
+        $deps = @(VcLibs)
+        if ($src.Extra) { $deps += Fetch $src.Extra.Url $src.Extra.Name }   # Moonlight: the XAML runtime
+        $r = InstallPackage $file $deps
         # believe the console's package list, not only its answer
         if ($r.Success -and (Installed $c.Prefix)) {
             Say "   done" "Green"
-            if ($c.FirstStart) { $firstStart += $c }
+            # every emulator Game Vault starts (Game Vault itself is started at the end)
+            if ($c.Game -and $c.Key -ne "GameVault") { $firstStart += $c }
             if ($p.New) { $fresh += $c.Key }
         }
         else { Say "   FAILED: $($r.Reason) $($r.CodeText)" "Red"; $failed += $c.Title }

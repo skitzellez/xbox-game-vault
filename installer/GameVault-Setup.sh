@@ -174,15 +174,15 @@ EOF
     return 0
 }
 
-KEYS="GameVault xemu Xenia RetroArch Dolphin XBSX2 PPSSPP Flycast"
-# comp <key>: sets C_TITLE, C_PREFIX, C_SERIESONLY, C_FIRST
+KEYS="GameVault xemu Xenia RetroArch Dolphin XBSX2 PPSSPP Flycast Moonlight"
+# comp <key>: sets C_TITLE, C_PREFIX, C_SERIESONLY
 comp() {
-    C_SERIESONLY=""; C_FIRST=""
+    C_SERIESONLY=""
     case "$1" in
         GameVault) C_TITLE="Game Vault (the launcher)"; C_PREFIX="GamerDad.GameVault" ;;
         xemu) C_TITLE="xemu (original Xbox)"; C_PREFIX="GamerDad.Xemu" ;;
-        # Xbox 360: Xenia for Game Vault (Series X|S only). A new install is started once (step 3).
-        Xenia) C_TITLE="Xenia for Game Vault (Xbox 360)"; C_PREFIX="GamerDad.XeniaForGameVault"; C_SERIESONLY=1; C_FIRST=1 ;;
+        # Xbox 360: Xenia for Game Vault (Series X|S only).
+        Xenia) C_TITLE="Xenia for Game Vault (Xbox 360)"; C_PREFIX="GamerDad.XeniaForGameVault"; C_SERIESONLY=1 ;;
         # Series X|S: our builds (any USB drive, saves on it). Xbox One: the original ones, built for its older CPU.
         RetroArch) C_TITLE="RetroArch (PlayStation, cartridge and CD systems)"
                    if [ -n "$series" ]; then C_PREFIX="GamerDad.RetroArchForGameVault"; else C_PREFIX="1e4cf179-f3c2-404f-b9f3-cb2070a5aad8"; fi ;;
@@ -191,11 +191,15 @@ comp() {
                if [ -n "$series" ]; then C_PREFIX="GamerDad.XBSX2ForGameVault"; else C_PREFIX="595c25f0-b370-4d7a-9b14-3027fbd69ecf"; fi ;;
         PPSSPP) C_TITLE="PPSSPP (PSP)"; C_PREFIX="0ad29e1a-1069-4cf5-8c97-620892505f0c" ;;
         Flycast) C_TITLE="Flycast (Dreamcast)"; C_PREFIX="AF75D068-D5AC-3D3C-B52A-2791C2F3491A" ;;
+        # Moonlight (TheElixZammuto/moonlight-xbox, GPL-3.0, not ours): streams games from a PC running Sunshine or
+        # GeForce Experience. Its Dev Mode build also needs Microsoft's XAML runtime (S_EXTRA_*, same release).
+        Moonlight) C_TITLE="Moonlight (stream games from your PC)"; C_PREFIX="50497EliaZammuto.MoonlightUWP" ;;
     esac
 }
-# comp_get <key>: where to download it; sets S_URL, S_NAME, S_VER, S_SIZE, S_ZIP (S_ERR on failure)
+# comp_get <key>: where to download it; sets S_URL, S_NAME, S_VER, S_SIZE, S_ZIP, S_EXTRA_URL, S_EXTRA_NAME
+# (a second runtime package it needs; S_ERR on failure)
 comp_get() {
-    S_ZIP=""; S_ERR=""
+    S_ZIP=""; S_ERR=""; S_EXTRA_URL=""; S_EXTRA_NAME=""
     case "$1" in
         GameVault) from_github "skitzellez/xbox-game-vault" '^GameVault_.*x64\.appx$' ;;
         xemu) from_github "skitzellez/xemu-uwp" '^Xemu_.*x64\.appx$' ;;
@@ -211,12 +215,15 @@ comp_get() {
                 S_URL="https://www.ppsspp.org/files/$(printf '%s' "$tag" | tr . _)/ppsspp_uwp.zip"; S_NAME="ppsspp_uwp_$tag.zip"
                 S_VER="$tag"; S_SIZE=28; S_ZIP=1 ;;
         Flycast) from_github "flyinghead/flycast" '^flycast-.*\.appx$' ;;
+        Moonlight) from_github "TheElixZammuto/moonlight-xbox" '^Microsoft\.UI\.Xaml\..*\.appx$' || return 1
+                   S_EXTRA_URL="$S_URL"; S_EXTRA_NAME="$S_NAME"
+                   from_github "TheElixZammuto/moonlight-xbox" '^moonlight-xbox-dx_.*_x64\.msixbundle$' ;;
     esac
 }
 
 # ---------------------------------------------------------------------------------------------------
 head_ "2. What will be installed"
-PKEY=(); PNEW=(); PURL=(); PNAME=(); PZIP=(); n=0
+PKEY=(); PNEW=(); PURL=(); PNAME=(); PZIP=(); PXURL=(); PXNAME=(); n=0
 for k in $KEYS; do
     comp "$k"
     if in_list "$k" "$Skip"; then say "$(printf '   %-52s left out (--skip)' "$C_TITLE")"; continue; fi
@@ -231,7 +238,8 @@ for k in $KEYS; do
     else
         if [ -n "$have" ]; then what="update $P_VER -> $S_VER"; else what="install $S_VER"; fi
         say "$(printf '   %-52s %s, %s MB' "$C_TITLE" "$what" "$S_SIZE")" White
-        PKEY[$n]="$k"; PNEW[$n]="$([ -z "$have" ] && echo 1)"; PURL[$n]="$S_URL"; PNAME[$n]="$S_NAME"; PZIP[$n]="$S_ZIP"; n=$((n + 1))
+        PKEY[$n]="$k"; PNEW[$n]="$([ -z "$have" ] && echo 1)"; PURL[$n]="$S_URL"; PNAME[$n]="$S_NAME"; PZIP[$n]="$S_ZIP"
+        PXURL[$n]="$S_EXTRA_URL"; PXNAME[$n]="$S_EXTRA_NAME"; n=$((n + 1))
     fi
 done
 if [ "$n" -gt 0 ] && [ -z "$Yes" ]; then
@@ -250,16 +258,15 @@ vclibs() {
     printf '%s' "$VCLIBS"
 }
 
-# install_package <file> [dependency]: prints "ok" or why it failed
+# install_package <file> [dependency] [second dependency]: prints "ok" or why it failed
 install_package() {
     local tok name s i
+    local form=(-F "$(form_file f "$1")")
+    [ -n "$2" ] && form+=(-F "$(form_file dep "$2")")
+    [ -n "$3" ] && form+=(-F "$(form_file dep1 "$3")")
     tok="$(token)"
     name="$(urlenc "$(basename "$1")")"
-    if [ -n "$2" ]; then
-        portal -m 1800 -H "X-CSRF-Token: $tok" -H "Expect:" -F "$(form_file f "$1")" -F "$(form_file dep "$2")" "$B/api/app/packagemanager/package?package=$name" -o /dev/null
-    else
-        portal -m 1800 -H "X-CSRF-Token: $tok" -H "Expect:" -F "$(form_file f "$1")" "$B/api/app/packagemanager/package?package=$name" -o /dev/null
-    fi
+    portal -m 1800 -H "X-CSRF-Token: $tok" -H "Expect:" "${form[@]}" "$B/api/app/packagemanager/package?package=$name" -o /dev/null
     for ((i = 0; i < 300; i++)); do
         sleep 2
         rm -f "$work/state.json"; portal "$B/api/app/packagemanager/state" -o "$work/state.json"
@@ -285,11 +292,16 @@ for ((i = 0; i < n; i++)); do
         if [ -z "$file" ]; then say "   FAILED: no package found inside the download" Red; FAILED="$FAILED, $C_TITLE"; continue; fi
     fi
     say "   sending to the console and installing (large ones take a few minutes)"
-    r="$(install_package "$file" "$(vclibs)")"
+    extra=""
+    if [ -n "${PXURL[$i]}" ] && ! extra="$(fetch "${PXURL[$i]}" "${PXNAME[$i]}")"; then   # Moonlight: the XAML runtime
+        say "   FAILED: download failed: ${PXURL[$i]}" Red; FAILED="$FAILED, $C_TITLE"; continue
+    fi
+    r="$(install_package "$file" "$(vclibs)" "$extra")"
     # believe the console's package list, not only its answer
     if [ "$r" = "ok" ] && installed "$C_PREFIX"; then
         say "   done" Green
-        [ -n "$C_FIRST" ] && FIRSTSTART="$FIRSTSTART $k"
+        # every emulator Game Vault starts (Game Vault itself is started at the end; Moonlight is not one)
+        [ "$k" != GameVault ] && [ "$k" != Moonlight ] && FIRSTSTART="$FIRSTSTART $k"
         [ -n "${PNEW[$i]}" ] && FRESH="$FRESH $k"
     else
         say "   FAILED: $r" Red; FAILED="$FAILED, $C_TITLE"
