@@ -108,7 +108,7 @@ All of them need **Developer Mode**. Game Vault does not run in retail mode.
 - A USB drive with your games.
 - Optional: BIOS files from your own consoles, for the systems that need them (Sega CD and a few others).
   PlayStation 2 games start with a free BIOS (beta); a BIOS from your own PS2 plays more games and is used first.
-  Put them in the `Game Vaultios` folder on the USB drive.
+  Put them in the `Game Vault\bios` folder on the USB drive.
 
 ## 🚀 Installation
 
