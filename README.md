@@ -106,8 +106,9 @@ All of them need **Developer Mode**. Game Vault does not run in retail mode.
   fee. Microsoft's guide: [Xbox Developer Mode activation](https://learn.microsoft.com/windows/uwp/xbox-apps/devkit-activation).
 - A Windows PC (or a Mac: beta) on the same network, for the one-time setup.
 - A USB drive with your games.
-- Optional: BIOS files from your own consoles, for the systems that need them (PlayStation 2, Sega CD and a few
-  others). Put them in the `Game Vault\bios` folder on the USB drive.
+- Optional: BIOS files from your own consoles, for the systems that need them (Sega CD and a few others).
+  PlayStation 2 games start with a free BIOS (beta); a BIOS from your own PS2 plays more games and is used first.
+  Put them in the `Game Vaultios` folder on the USB drive.
 
 ## 🚀 Installation
 
@@ -249,8 +250,9 @@ you can support it on **[Patreon](https://www.patreon.com/Skitzelles)**. ❤️
   [XboxEmulationHub](https://github.com/XboxEmulationHub) for SDL3-uwp, mesa-uwp and their Xbox builds.
 - [Xenia](https://xenia.jp) and Xenia Canary, and [danprice142](https://github.com/danprice142/xenia-canary-uwp) for the
   Xbox (UWP) port of Xenia Canary (BSD-3).
-- [SpiritBoot](https://github.com/Mainkill1/SpiritBoot) (free original Xbox BIOS) and OpenBIOS (free PlayStation
-  BIOS).
+- Free BIOS files: [SpiritBoot](https://github.com/Mainkill1/SpiritBoot) (original Xbox), OpenBIOS by the
+  PCSX-Redux team (PlayStation, MIT), OpenPS2BIOS by Tamariba Devs (PlayStation 2, MIT, beta),
+  [EmuTOS](https://emutos.sourceforge.io) (Atari ST, GPL-2.0) and [C-BIOS](https://cbios.sourceforge.net) (MSX, BSD).
 - Title data from GameTDB and the libretro database (Redump lists), box art from the libretro thumbnail server.
 - The [Orbitron](https://github.com/theleagueof/orbitron) font (SIL Open Font License).
 - LZMA SDK (public domain), UnRAR (freeware licence) and Project Nayuki's
