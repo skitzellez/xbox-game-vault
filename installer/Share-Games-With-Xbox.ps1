@@ -5,12 +5,15 @@
 # so your own Windows account and password are never
 # used: Windows does not let an account without a password sign in over the network, and your own account can do
 # far more than read games. You choose the account's password here; it is typed on your phone once and kept on
-# the Xbox. Run "Share games with Xbox.bat" (it asks for administrator rights once).
+# the Xbox. Run from Game Vault Setup.exe (it asks for administrator rights once).
+# Game Vault Setup.exe passes the answers: -Folder, -KeepPassword or the password in the environment (GV_SHARE_PASSWORD,
+# never on the command line), -SetPrivate, -NoPause; it reads the last line, "@@result|<ip>|<share>|<account>|<kept>".
+param([string]$Folder, [switch]$KeepPassword, [switch]$SetPrivate, [switch]$NoPause)
 $ErrorActionPreference = 'Stop'
 $Account = 'xboxgames'
 $Share = 'XboxGames'
 
-function Pause-End($code) { Write-Host ''; Read-Host 'Press Enter to close' | Out-Null; exit $code }
+function Pause-End($code) { if (-not $NoPause) { Write-Host ''; Read-Host 'Press Enter to close' | Out-Null }; exit $code }
 
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
         [Security.Principal.WindowsBuiltInRole]::Administrator)) {
@@ -23,13 +26,15 @@ Write-Host 'Game Vault - share games with your Xbox' -ForegroundColor Green
 Write-Host ''
 
 # 1. the folder
-Add-Type -AssemblyName System.Windows.Forms
-$dlg = New-Object System.Windows.Forms.FolderBrowserDialog
-$dlg.Description = 'Choose the folder with your games (its subfolders are included)'
-$dlg.ShowNewFolderButton = $false
-$top = New-Object System.Windows.Forms.Form -Property @{TopMost = $true}
-if ($dlg.ShowDialog($top) -ne 'OK') { Write-Host 'No folder chosen.'; Pause-End 1 }
-$Folder = $dlg.SelectedPath
+if (-not $Folder) {
+    Add-Type -AssemblyName System.Windows.Forms
+    $dlg = New-Object System.Windows.Forms.FolderBrowserDialog
+    $dlg.Description = 'Choose the folder with your games (its subfolders are included)'
+    $dlg.ShowNewFolderButton = $false
+    $top = New-Object System.Windows.Forms.Form -Property @{TopMost = $true}
+    if ($dlg.ShowDialog($top) -ne 'OK') { Write-Host 'No folder chosen.'; Pause-End 1 }
+    $Folder = $dlg.SelectedPath
+}
 if ($Folder.Length -le 3) {
     Write-Host "Please choose a folder, not a whole drive ($Folder): only your games should be shared." -ForegroundColor Yellow
     Pause-End 1
@@ -41,13 +46,20 @@ Write-Host "Folder: $Folder"
 $user = Get-LocalUser -Name $Account -ErrorAction SilentlyContinue
 $keep = $false
 Write-Host ''
-if ($user) {
+$given = $env:GV_SHARE_PASSWORD
+$env:GV_SHARE_PASSWORD = $null
+if ($user -and $KeepPassword) {
+    $keep = $true
+} elseif ($given) {
+    if ($given.Length -lt 8) { throw 'The password must have 8 characters or more.' }
+    $p1 = ConvertTo-SecureString $given -AsPlainText -Force
+} elseif ($user) {
     Write-Host "The '$Account' account is already set up, and your Xbox knows its password."
     Write-Host 'Press Enter to keep that password (nothing to type on your phone), or type a new one.'
     $p1 = Read-Host -AsSecureString 'New password (Enter keeps the current one)'
     $keep = $p1.Length -eq 0
 }
-if (-not $keep) {
+if (-not $keep -and -not $given) {
     if (-not $user) {
         Write-Host "Choose a password for the '$Account' account (8 characters or more)."
         Write-Host 'You type it once on your phone when Game Vault asks; it is kept on the Xbox.'
@@ -68,7 +80,7 @@ if ($user) {
     Enable-LocalUser -Name $Account
 } else {
     New-LocalUser -Name $Account -Password $p1 -PasswordNeverExpires -UserMayNotChangePassword `
-        -Description 'Game Vault (Xbox): reads shared games, writes only Game Vault saves' | Out-Null
+        -Description 'Game Vault (Xbox): reads games, writes saves' | Out-Null   # New-LocalUser takes 48 at most
 }
 # not a member of Users: no sign-in on this PC, only network access to the share
 Remove-LocalGroupMember -Group 'Users' -Member $Account -ErrorAction SilentlyContinue
@@ -97,7 +109,7 @@ $ip = (Get-NetIPAddress -AddressFamily IPv4 -InterfaceIndex $net.InterfaceIndex 
 Write-Host ''
 if ($net -and $net.NetworkCategory -eq 'Public') {
     Write-Host "Your network '$($net.Name)' is set as Public." -ForegroundColor Yellow
-    $a = Read-Host 'Is this your home network? Set it to Private so the Xbox can reach the share (y/n)'
+    $a = if ($SetPrivate) { 'y' } elseif ($NoPause) { 'n' } else { Read-Host 'Is this your home network? Set it to Private so the Xbox can reach the share (y/n)' }
     if ($a -match '^[yY]') { Set-NetConnectionProfile -InterfaceIndex $net.InterfaceIndex -NetworkCategory Private; Write-Host 'Set to Private.' }
 }
 
@@ -114,6 +126,7 @@ if ($keep) {
 }
 Write-Host ''
 Write-Host "To stop sharing later: run this again and close it, or remove the share '$Share' in Computer Management."
+Write-Host "@@result|$ip|$Share|$Account|$keep|$env:COMPUTERNAME"
 Pause-End 0
 } catch {
     # the window stays open with what went wrong (no password is ever part of it)
