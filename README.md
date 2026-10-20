@@ -112,18 +112,20 @@ All of them need **Developer Mode**. Game Vault does not run in retail mode.
 
 ## 🚀 Installation
 
-1. On the console, open **Dev Home** and turn on the **Device Portal** with a user name and password (Remote
+1. Put the console in **Developer Mode**: get the free **Xbox Dev Mode** app from the Microsoft Store on the
+   Xbox and follow its steps (see Requirements above). You can switch back to normal (Retail) mode at any time.
+2. On the console, open **Dev Home** and turn on the **Device Portal** with a user name and password (Remote
    Access Settings). Make sure a profile is signed in.
-2. Download **GameVault-Setup.zip** from [Releases](https://github.com/skitzellez/xbox-game-vault/releases/latest) and unzip it.
-   - **Windows:** double-click **Install Game Vault.bat**.
+3. Download **GameVault-Setup.zip** from [Releases](https://github.com/skitzellez/xbox-game-vault/releases/latest) and unzip it.
+   - **Windows:** double-click **Install Game Vault.exe**.
    - **Mac (BETA, tested on macOS Sonoma 14.7):** download **GameVault-Setup-Mac-BETA.zip** from the
      [Mac setup beta](https://github.com/skitzellez/xbox-game-vault/releases/tag/mac-setup-beta-1) and follow
      the step-by-step guide: **[docs/MAC-SETUP.md](docs/MAC-SETUP.md)**.
-3. Type in the console's address, user name and password. The setup installs Game Vault, xemu and the
+4. Type in the console's address, user name and password. The setup installs Game Vault, xemu and the
    emulators, and moves over anything you already had in the older RetroArch or XBSX2 apps.
-4. In **Dev Home**, highlight each new app, press **Menu → View details**, and set **App type** to **Game**.
+5. In **Dev Home**, highlight each new app, press **Menu → View details**, and set **App type** to **Game**.
    This matters: as an *App*, the Xbox gives it too little memory to emulate anything.
-5. Start Game Vault and plug in your USB drive.
+6. Start Game Vault and plug in your USB drive. From then on, press **RT** in Game Vault to update.
 
 Doing it by hand instead, or building from source: see **[docs/DEVELOPER.md](docs/DEVELOPER.md)**.
 
