@@ -117,7 +117,7 @@ All of them need **Developer Mode**. Game Vault does not run in retail mode.
 2. On the console, open **Dev Home** and turn on the **Device Portal** with a user name and password (Remote
    Access Settings). Make sure a profile is signed in.
 3. Download **GameVault-Setup.zip** from [Releases](https://github.com/skitzellez/xbox-game-vault/releases/latest) and unzip it.
-   - **Windows:** double-click **Install Game Vault.exe**.
+   - **Windows:** double-click **Install Game Vault.bat** (if Windows asks, click **More info** > **Run anyway**).
    - **Mac (BETA, tested on macOS Sonoma 14.7):** download **GameVault-Setup-Mac-BETA.zip** from the
      [Mac setup beta](https://github.com/skitzellez/xbox-game-vault/releases/tag/mac-setup-beta-1) and follow
      the step-by-step guide: **[docs/MAC-SETUP.md](docs/MAC-SETUP.md)**.
