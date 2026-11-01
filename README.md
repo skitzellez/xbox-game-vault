@@ -10,16 +10,21 @@
   GameCube, Wii, Dreamcast, arcade and many classic systems, made for the TV and the controller.
 </p>
 
+<!-- gv-buttons:start -->
 <p align="center">
-  <a href="https://github.com/skitzellez/xbox-game-vault/releases/latest"><img alt="Download Game Vault" src="https://img.shields.io/badge/DOWNLOAD-Game%20Vault-107C10?style=for-the-badge&logo=xbox&logoColor=white"></a>
+  <a href="https://github.com/skitzellez/xbox-game-vault/releases/latest"><img alt="DOWNLOAD Game Vault" src="https://img.shields.io/badge/DOWNLOAD-Game%20Vault-107C10?style=for-the-badge&logo=xbox&logoColor=white"></a>
   &nbsp;
-  <a href="#-installation"><img alt="How to install" src="https://img.shields.io/badge/HOW%20TO-INSTALL-0B7DDA?style=for-the-badge"></a>
+  <a href="#-installation"><img alt="HOW TO INSTALL" src="https://img.shields.io/badge/HOW%20TO-INSTALL-0B7DDA?style=for-the-badge"></a>
+  &nbsp;
+  <a href="https://discord.gg/RmhhWgguvw"><img alt="Join the Game Vault Discord" src="https://img.shields.io/badge/JOIN-Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white"></a>
   &nbsp;
   <a href="https://www.patreon.com/Skitzelles"><img alt="Support on Patreon" src="https://img.shields.io/badge/SUPPORT-Patreon-F96854?style=for-the-badge&logo=patreon&logoColor=white"></a>
 </p>
+<!-- gv-buttons:end -->
 
 <p align="center">
   <a href="https://github.com/skitzellez/xbox-game-vault/releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/skitzellez/xbox-game-vault?label=latest&color=107C10"></a>
+  <a href="https://discord.gg/RmhhWgguvw"><img alt="Discord" src="https://img.shields.io/badge/chat-Discord-5865F2?logo=discord&logoColor=white"></a>
   <a href="https://github.com/skitzellez/xbox-game-vault/releases"><img alt="Game Vault downloads" src="https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fskitzellez%2Fgame-vault-updates%2Fmain%2Fbadges%2Fdownloads.json"></a>
   <a href="#-related-projects"><img alt="Downloads of Game Vault and its emulators" src="https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fskitzellez%2Fgame-vault-updates%2Fmain%2Fbadges%2Fdownloads-all.json"></a>
   <a href="https://github.com/skitzellez/xbox-game-vault/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/skitzellez/xbox-game-vault?color=F5C518&logo=github"></a>
@@ -227,16 +232,44 @@ reports on, you can give your console a name (any name you like, or none) so its
 that name goes with the reports and nowhere else. Nothing else on the console or the USB drive is sent: no saves, no game files, no BIOS files. The
 emulators themselves do not connect to anything unless a game goes online.
 
-## 🔗 Related projects
+<!-- gv-family:start -->
+## 🎮 The Game Vault family
 
-- [Game Vault for Android](https://github.com/skitzellez/game-vault-android) (beta): the same game library for phones,
-  tablets and Android TV.
-- [xemu-uwp](https://github.com/skitzellez/xemu-uwp): our port of xemu to Xbox Dev Mode (source, branch `uwp`).
-- [RetroArch for Game Vault](https://github.com/skitzellez/RetroArch-GameVault) and
-  [XBSX2 for Game Vault](https://github.com/skitzellez/XBSX2-GameVault): our builds, which read any USB drive and
-  keep your saves in the `Game Vault` folder (source and changes).
-- [Xenia for Game Vault](https://github.com/skitzellez/Xenia-GameVault): our build of Xenia Canary for Xbox 360 games
-  (source, branch `gamevault`).
+Game Vault is one launcher plus emulators built to work with it. **Install [Game Vault](https://github.com/skitzellez/xbox-game-vault) and it sets these up for you**; press **RT** in Game Vault to update them all.
+
+**Apps**
+
+| Project | What it is | Runs on |
+|---|---|---|
+| [**Game Vault**](https://github.com/skitzellez/xbox-game-vault) 📍 *you are here* | The launcher: plug in a USB drive, pick a game, play. Sets up everything below by itself. | Xbox Series X&#124;S |
+| [Game Vault for Android](https://github.com/skitzellez/game-vault-android) | The same game library for phones, tablets and Android TV (beta). | Android |
+| [Game Vault for iPhone](https://github.com/skitzellez/game-vault-ios) | The Game Vault look on iPhone (early test). | iPhone |
+
+**Emulators built for Game Vault**
+
+| Project | What it is | Runs on |
+|---|---|---|
+| [xemu for Xbox Dev Mode](https://github.com/skitzellez/xemu-uwp) | Original Xbox | Xbox Series X&#124;S |
+| [Xenia for Game Vault](https://github.com/skitzellez/Xenia-GameVault) | Xbox 360 | Xbox Series X&#124;S |
+| [XBSX2 for Game Vault](https://github.com/skitzellez/XBSX2-GameVault) | PlayStation 2 | Xbox Series X&#124;S |
+| [Dolphin for Game Vault](https://github.com/skitzellez/Dolphin-GameVault) | GameCube and Wii | Xbox Series X&#124;S |
+| [Game Vault · Wii U (Cemu)](https://github.com/skitzellez/Cemu-GameVault) | Wii U | Xbox Series X&#124;S |
+| [RetroArch for Game Vault](https://github.com/skitzellez/RetroArch-GameVault) | PlayStation, Dreamcast, arcade and classic systems | Xbox Series X&#124;S, Android |
+| [Game Vault · Flash](https://github.com/skitzellez/Flash-GameVault) | Flash games | Xbox Series X&#124;S |
+| [Gambatte for Game Vault](https://github.com/skitzellez/Gambatte-GameVault) | Game Boy link cable in online rooms | Xbox Series X&#124;S, Android |
+| [X1 BOX for Game Vault](https://github.com/skitzellez/x1box-gamevault) | Original Xbox | Android |
+
+**Extras**
+
+| Project | What it is | Runs on |
+|---|---|---|
+| [Free games](https://github.com/skitzellez/game-vault-free-games) | Freeware and shareware for the FREE GAMES tab | Game Vault |
+| [Fallout 1in2 for Xbox](https://github.com/skitzellez/Fallout1in2-Xbox) | The original Fallout, made for the controller | Xbox Series X&#124;S |
+| [Game Vault updates](https://github.com/skitzellez/game-vault-updates) | Update data Game Vault reads when it starts | Game Vault |
+
+**💬 Help, news and bug reports:** the [Game Vault Discord](https://discord.gg/RmhhWgguvw) (or this repo's Issues).
+Please don't take problems with these builds to the original emulator teams: they don't make or support them.
+<!-- gv-family:end -->
 
 ## ❤️ Support the project
 
