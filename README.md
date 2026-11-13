@@ -6,8 +6,9 @@
 
 <p align="center">
   <b>Plug in a USB stick, pick a game, play.</b><br>
-  The all-in-one game library for <b>Xbox Series X|S</b> in Dev Mode: original Xbox, Xbox 360, PlayStation 1 and 2,
-  GameCube, Wii, Dreamcast, arcade and many classic systems, made for the TV and the controller.
+  The all-in-one game library for <b>Xbox Series X|S</b> in Dev Mode: <b>93 systems</b>, from original Xbox, Xbox 360,
+  PlayStation 1, 2 and 3, GameCube, Wii, Wii U and Dreamcast to arcade, classic consoles, home computers and homebrew,
+  made for the TV and the controller.
 </p>
 
 <!-- gv-buttons:start -->
@@ -71,6 +72,8 @@ port of the original Xbox emulator **xemu**, and it sets up the other emulators 
 |---|---|
 | 🔌 **Plug and play** | Put your games on a USB stick in any folders, with any names. FAT32, exFAT and NTFS all work as they are, with no formatting or permissions to set. |
 | 🔎 **Knows every game** | Reads the files themselves, so a PlayStation 2 game is never mistaken for a PlayStation one. Zipped and packed games (ZIP, 7z, RAR, CHD) work too. |
+| 🗂️ **93 systems, a tidy shelf** | Each big console has its own tab; arcade boards share ARCADE, and the smaller systems share COMPUTERS, MORE CONSOLES, PC GAMES and HOMEBREW. |
+| 🌐 **Games from your PC or NAS** | Add a network share once; most games play straight from it, no copying. |
 | 🖼️ **Box art and names** | Filled in by themselves. |
 | 🎨 **A look for every console** | Each console has its own colour and moving background; a console with only a few games shows the chosen one big. |
 | 🟢 **Original Xbox** | Our own Dev Mode port of xemu. A free BIOS is built in, so games start even without Xbox files of your own. |
@@ -83,16 +86,30 @@ port of the original Xbox emulator **xemu**, and it sets up the other emulators 
 
 ## 🕹️ Supported systems
 
+**93 systems.** Put each system's games in a folder named after it for the best results (file types that several
+systems share, like `.dsk` or `.bin`, are only read that way).
+
 | System | Plays in |
 |---|---|
 | Original Xbox | xemu for Dev Mode (ours) |
 | Xbox 360 (Series X\|S) | Xenia for Game Vault (ours, based on Xenia Canary) |
-| PlayStation, Saturn, Sega CD, Game Boy / Color / Advance, NES, SNES, N64, DS, Genesis and other cartridge and CD systems, ScummVM | RetroArch for Game Vault (ours, based on RetroArch) |
-| Arcade (MAME 2003-Plus and FinalBurn Neo sets, known by their .zip name), DOS (game .zip files, CD images in a `DOS` folder) | RetroArch for Game Vault (FinalBurn Neo, MAME 2003-Plus, DOSBox Pure) |
 | PlayStation 2 | XBSX2 for Game Vault (ours, based on XBSX2) |
+| PlayStation 3 | RPCS3 for Game Vault (ours, based on RPCS3) |
 | GameCube, Wii, Triforce arcade | Dolphin for Game Vault (ours, based on the Xbox Dolphin by XboxEmulationHub) |
+| Wii U | Game Vault · Wii U (ours, based on Cemu) |
+| Sega NAOMI, NAOMI 2, Atomiswave | Flycast for Game Vault (ours, based on Flycast) |
+| Dreamcast | Flycast (ours, or the original Flycast app) |
 | PSP | PPSSPP |
-| Dreamcast, Atomiswave, Sega NAOMI | Flycast |
+| PlayStation, Saturn, Sega CD, PC Engine CD, 3DO, Neo Geo CD, PC-FX, CD-i, Amiga CD32 | RetroArch for Game Vault (ours, based on RetroArch) |
+| Nintendo: NES, Famicom Disk System, SNES, Satellaview, N64, Game Boy / Color / Advance, DS, 3DS, Virtual Boy, Pokémon Mini, Game & Watch | RetroArch for Game Vault |
+| Sega: Master System, SG-1000, Genesis, 32X, Game Gear, Pico; NEC: PC Engine, SuperGrafx; Atari: 2600, 5200, 7800, Lynx, Jaguar | RetroArch for Game Vault |
+| More consoles: Neo Geo Pocket, WonderSwan, ColecoVision, Intellivision, Vectrex, Channel F, Supervision, Odyssey 2, Arcadia 2001, Mega Duck | RetroArch for Game Vault |
+| Home computers: MSX / MSX2 / MSX2+ / turbo R, C64, VIC-20, Plus/4, Amiga, ZX Spectrum, ZX81, Atari ST, Atari 800, Apple II, Macintosh, Amstrad CPC, BBC Micro, Thomson, PC-88, PC-98, Sharp X1, X68000 | RetroArch for Game Vault |
+| Arcade (FinalBurn Neo and MAME sets, known by their .zip name), Sega Model 3 | RetroArch for Game Vault |
+| PC games: DOS, ScummVM adventures, Doom, Quake, Wolfenstein 3D, Cave Story, RPG Maker 2000/2003 | RetroArch for Game Vault |
+| Homebrew: PICO-8, CHIP-8, Arduboy, TIC-80, WASM-4, LowRes NX, Vircon32, Uzebox | RetroArch for Game Vault |
+| Flash games | Game Vault · Flash (ours, based on Ruffle) |
+| OpenBOR beat 'em ups | Game Vault · OpenBOR (ours, based on OpenBOR) |
 | Stream games from your PC (Sunshine) | Moonlight for Xbox |
 
 ## 🎮 Supported consoles
@@ -111,9 +128,10 @@ All of them need **Developer Mode**. Game Vault does not run in retail mode.
   fee. Microsoft's guide: [Xbox Developer Mode activation](https://learn.microsoft.com/windows/uwp/xbox-apps/devkit-activation).
 - A Windows PC (or a Mac: beta) on the same network, for the one-time setup.
 - A USB drive with your games.
-- Optional: BIOS files from your own consoles, for the systems that need them (Sega CD and a few others).
-  PlayStation 2 games start with a free BIOS (beta); a BIOS from your own PS2 plays more games and is used first.
-  Put them in the `Game Vault\bios` folder on the USB drive.
+- Optional: BIOS files from your own consoles, for the systems that need them (Sega CD, arcade boards and a few
+  others). PlayStation and PlayStation 2 start with a free BIOS; your own plays more games and is used first. Put them
+  in the `Game Vault\bios` folder on the USB drive, or keep them in any `bios` / `RetroArch\system` folder: Game
+  Vault finds them. Options → Advanced → BIOS shows what each system has.
 
 ## 🚀 Installation
 
@@ -254,7 +272,9 @@ Game Vault is one launcher plus emulators built to work with it. **Install [Game
 | [XBSX2 for Game Vault](https://github.com/skitzellez/XBSX2-GameVault) | PlayStation 2 | Xbox Series X&#124;S |
 | [Dolphin for Game Vault](https://github.com/skitzellez/Dolphin-GameVault) | GameCube and Wii | Xbox Series X&#124;S |
 | [Game Vault · Wii U (Cemu)](https://github.com/skitzellez/Cemu-GameVault) | Wii U | Xbox Series X&#124;S |
-| [RetroArch for Game Vault](https://github.com/skitzellez/RetroArch-GameVault) | PlayStation, Dreamcast, arcade and classic systems | Xbox Series X&#124;S, Android |
+| [RPCS3 for Game Vault](https://github.com/skitzellez/RPCS3-GameVault) | PlayStation 3 | Xbox Series X&#124;S |
+| [Flycast for Game Vault](https://github.com/skitzellez/Flycast-GameVault) | Sega NAOMI, NAOMI 2 and Atomiswave arcade | Xbox Series X&#124;S |
+| [RetroArch for Game Vault](https://github.com/skitzellez/RetroArch-GameVault) | PlayStation, Dreamcast, arcade, classic consoles and computers (80+ systems) | Xbox Series X&#124;S, Android |
 | [Game Vault · Flash](https://github.com/skitzellez/Flash-GameVault) | Flash games | Xbox Series X&#124;S |
 | [Game Vault · OpenBOR](https://github.com/skitzellez/OpenBOR-GameVault) | OpenBOR beat 'em up games | Xbox Series X&#124;S |
 | [Gambatte for Game Vault](https://github.com/skitzellez/Gambatte-GameVault) | Game Boy link cable in online rooms | Xbox Series X&#124;S, Android |
@@ -265,6 +285,7 @@ Game Vault is one launcher plus emulators built to work with it. **Install [Game
 | Project | What it is | Runs on |
 |---|---|---|
 | [Free games](https://github.com/skitzellez/game-vault-free-games) | Freeware and shareware for the FREE GAMES tab | Game Vault |
+| [Game Vault · Web](https://github.com/skitzellez/Web-GameVault) | Websites from the WEB menu, with the controller | Xbox Series X&#124;S |
 | [Fallout 1in2 for Xbox](https://github.com/skitzellez/Fallout1in2-Xbox) | The original Fallout, made for the controller | Xbox Series X&#124;S |
 | [Game Vault updates](https://github.com/skitzellez/game-vault-updates) | Update data Game Vault reads when it starts | Game Vault |
 
