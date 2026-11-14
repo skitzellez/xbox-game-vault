@@ -6,8 +6,8 @@
 
 <p align="center">
   <b>Plug in a USB stick, pick a game, play.</b><br>
-  The all-in-one game library for <b>Xbox Series X|S</b> in Dev Mode: <b>93 systems</b>, from original Xbox, Xbox 360,
-  PlayStation 1, 2 and 3, GameCube, Wii, Wii U and Dreamcast to arcade, classic consoles, home computers and homebrew,
+  The all-in-one game library for <b>Xbox Series X|S</b> in Dev Mode: <b>94 systems</b>, from original Xbox, Xbox 360,
+  PlayStation 1, 2 and 3, PS Vita, GameCube, Wii, Wii U and Dreamcast to arcade, classic consoles, home computers and homebrew,
   made for the TV and the controller.
 </p>
 
@@ -72,7 +72,7 @@ port of the original Xbox emulator **xemu**, and it sets up the other emulators 
 |---|---|
 | 🔌 **Plug and play** | Put your games on a USB stick in any folders, with any names. FAT32, exFAT and NTFS all work as they are, with no formatting or permissions to set. |
 | 🔎 **Knows every game** | Reads the files themselves, so a PlayStation 2 game is never mistaken for a PlayStation one. Zipped and packed games (ZIP, 7z, RAR, CHD) work too. |
-| 🗂️ **93 systems, a tidy shelf** | Each big console has its own tab; arcade boards share ARCADE, and the smaller systems share COMPUTERS, MORE CONSOLES, PC GAMES and HOMEBREW. |
+| 🗂️ **94 systems, a tidy shelf** | Each big console has its own tab; arcade boards share ARCADE, and the smaller systems share COMPUTERS, MORE CONSOLES, PC GAMES and HOMEBREW. |
 | 🌐 **Games from your PC or NAS** | Add a network share once; most games play straight from it, no copying. |
 | 🖼️ **Box art and names** | Filled in by themselves. |
 | 🎨 **A look for every console** | Each console has its own colour and moving background; a console with only a few games shows the chosen one big. |
@@ -86,7 +86,7 @@ port of the original Xbox emulator **xemu**, and it sets up the other emulators 
 
 ## 🕹️ Supported systems
 
-**93 systems.** Put each system's games in a folder named after it for the best results (file types that several
+**94 systems.** Put each system's games in a folder named after it for the best results (file types that several
 systems share, like `.dsk` or `.bin`, are only read that way).
 
 | System | Plays in |
@@ -95,6 +95,7 @@ systems share, like `.dsk` or `.bin`, are only read that way).
 | Xbox 360 (Series X\|S) | Xenia for Game Vault (ours, based on Xenia Canary) |
 | PlayStation 2 | XBSX2 for Game Vault (ours, based on XBSX2) |
 | PlayStation 3 | RPCS3 for Game Vault (ours, based on RPCS3) |
+| PS Vita | Game Vault · PS Vita (ours, based on Vitox by nirally and Vita3K) |
 | GameCube, Wii, Triforce arcade | Dolphin for Game Vault (ours, based on the Xbox Dolphin by XboxEmulationHub) |
 | Wii U | Game Vault · Wii U (ours, based on Cemu) |
 | Sega NAOMI, NAOMI 2, Atomiswave | Flycast for Game Vault (ours, based on Flycast) |
@@ -273,6 +274,7 @@ Game Vault is one launcher plus emulators built to work with it. **Install [Game
 | [Dolphin for Game Vault](https://github.com/skitzellez/Dolphin-GameVault) | GameCube and Wii | Xbox Series X&#124;S |
 | [Game Vault · Wii U (Cemu)](https://github.com/skitzellez/Cemu-GameVault) | Wii U | Xbox Series X&#124;S |
 | [RPCS3 for Game Vault](https://github.com/skitzellez/RPCS3-GameVault) | PlayStation 3 | Xbox Series X&#124;S |
+| [Game Vault · PS Vita](https://github.com/skitzellez/Vita-GameVault) | PlayStation Vita (Vitox / Vita3K) | Xbox Series X&#124;S |
 | [Flycast for Game Vault](https://github.com/skitzellez/Flycast-GameVault) | Sega NAOMI, NAOMI 2 and Atomiswave arcade | Xbox Series X&#124;S |
 | [RetroArch for Game Vault](https://github.com/skitzellez/RetroArch-GameVault) | PlayStation, Dreamcast, arcade, classic consoles and computers (80+ systems) | Xbox Series X&#124;S, Android |
 | [Game Vault · Flash](https://github.com/skitzellez/Flash-GameVault) | Flash games | Xbox Series X&#124;S |
