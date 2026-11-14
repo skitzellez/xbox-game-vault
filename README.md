@@ -72,9 +72,13 @@ port of the original Xbox emulator **xemu**, and it sets up the other emulators 
 |---|---|
 | 🔌 **Plug and play** | Put your games on a USB stick in any folders, with any names. FAT32, exFAT and NTFS all work as they are, with no formatting or permissions to set. |
 | 🔎 **Knows every game** | Reads the files themselves, so a PlayStation 2 game is never mistaken for a PlayStation one. Zipped and packed games (ZIP, 7z, RAR, CHD) work too. |
-| 🗂️ **94 systems, a tidy shelf** | Each big console has its own tab; arcade boards share ARCADE, and the smaller systems share COMPUTERS, MORE CONSOLES, PC GAMES and HOMEBREW. |
+| 🗂️ **95 systems, a tidy shelf** | Each big console has its own tab; arcade boards share ARCADE, and the smaller systems share COMPUTERS, MORE CONSOLES, PC GAMES and HOMEBREW. |
 | 🌐 **Games from your PC or NAS** | Add a network share once; most games play straight from it, no copying. |
-| 🖼️ **Box art and names** | Filled in by themselves. |
+| 🖼️ **Box art and names** | Filled in by themselves, with a neat made-up box for the rare game no one has a cover for. |
+| 🏆 **Achievements** | Earn RetroAchievements in your classic games. Sign in once with your phone. |
+| 📚 **Collections** | The COLLECTIONS tab groups your games by genre, decade, players and rating, plus the ones you never played. |
+| ⏱️ **Play time and stats** | Every game shows how long you played it; Your stats shows your most played games and systems. |
+| ⏪ **Save states** | Press LT in a game's details to start right from one of your save states, with a picture of each. |
 | 🎨 **A look for every console** | Each console has its own colour and moving background; a console with only a few games shows the chosen one big. |
 | 🟢 **Original Xbox** | Our own Dev Mode port of xemu. A free BIOS is built in, so games start even without Xbox files of your own. |
 | ⚪ **Xbox 360** (Series X\|S) | Our build of Xenia Canary plays 360 games from any USB drive, with no permission step and no profile to make. |
@@ -242,9 +246,11 @@ Game Vault has no account, no ads and no tracking. It connects to these places o
 |---|---|---|
 | Skitzelles' private report storage (Backblaze B2) | Problem reports: the session logs of the games you played (game file name, speed, memory, the buttons held, what happened, crash details, the console model), Game Vault's own log, and XBSX2's and RetroArch's own logs of their last session (game file name, settings, error messages); after a crash, also the last few small pictures of the screen (320x240) from before it | **Only if you said yes**; turn it off any time with **Menu** |
 | GameTDB and the libretro thumbnail server | Game names, box art, and the small preview pictures (title screen, a picture of the game) | Box art when a game is new to the library; preview pictures when you stop on a game, once |
+| LaunchBox Games Database pictures (images.launchbox-app.com) | Box art for games the servers above have none for | When a game without a cover is new to the library |
+| RetroAchievements (retroachievements.org) | Only if you sign in (Options > Saves & play > Achievements): your RetroAchievements name and password once, from your phone; then RetroArch uses the sign-in key it gets back to unlock achievements as you play. The password is never kept on the Xbox | Only after you signed in, while you play a RetroArch game |
 | Microsoft (download.xbox.com) | Box art of Xbox 360 games, asked for by the game's ID | When a 360 game is new to the library |
 | Your own PC or NAS (only the ones you add) | Signs in with the user name and password you typed on your phone, lists the shared folder, plays Xbox games straight from it, and copies other games to the console before they start | Only for network places you added (LT). The password stays on the Xbox, in the console's password vault: never in a file, a log or a report |
-| GitHub (raw.githubusercontent.com) | Game name lists (PlayStation 1 and 2, and the libretro database for Xbox, Xbox 360 and arcade sets), Game Vault's own small fixes and notices, the check for the lowest supported Game Vault version, picture settings for xemu, and the shared shader warm-up lists (always the whole set, so it says nothing about your games) | Now and then, at start |
+| GitHub (raw.githubusercontent.com) | Game name lists (PlayStation 1 and 2, and the libretro database for Xbox, Xbox 360 and arcade sets), Game Vault's own small fixes and notices, the box art and game info lists (genres, year, players) made from the LaunchBox Games Database, the check for the lowest supported Game Vault version, picture settings for xemu, and the shared shader warm-up lists (always the whole set, so it says nothing about your games) | Now and then, at start |
 
 Reports are filed under a code for the console and can only be read by the project's author. The code stays the same when Game Vault is reinstalled: it is kept in Game Vault's settings, its shared folder and on the games drive (`Game Vault\console_id.txt`), and reports also carry a one-way code made from the ID Windows gives Game Vault's publisher for the console, which links your own reports together but cannot be turned back into that ID and means nothing outside Game Vault's reports. Nothing of this is made or sent while reports are off. When you turn
 reports on, you can give your console a name (any name you like, or none) so its reports are easy to tell apart;
@@ -313,6 +319,8 @@ you can support it on **[Patreon](https://www.patreon.com/Skitzelles)**. ❤️
   PCSX-Redux team (PlayStation, MIT), OpenPS2BIOS by Tamariba Devs (PlayStation 2, MIT, beta),
   [EmuTOS](https://emutos.sourceforge.io) (Atari ST, GPL-2.0) and [C-BIOS](https://cbios.sourceforge.net) (MSX, BSD).
 - Title data from GameTDB and the libretro database (Redump lists), box art from the libretro thumbnail server.
+- Game info (genres, years, players, ratings, descriptions) and more box art from the [LaunchBox Games Database](https://gamesdb.launchbox-app.com).
+- Achievements by [RetroAchievements](https://retroachievements.org).
 - The [Orbitron](https://github.com/theleagueof/orbitron) font (SIL Open Font License).
 - LZMA SDK (public domain), UnRAR (freeware licence) and Project Nayuki's
   [QR Code generator](https://github.com/nayuki/QR-Code-generator) (MIT).
