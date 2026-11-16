@@ -321,6 +321,7 @@ you can support it on **[Patreon](https://www.patreon.com/Skitzelles)**. ❤️
 - Title data from GameTDB and the libretro database (Redump lists), box art from the libretro thumbnail server.
 - Game info (genres, years, players, ratings, descriptions) and more box art from the [LaunchBox Games Database](https://gamesdb.launchbox-app.com).
 - Achievements by [RetroAchievements](https://retroachievements.org).
+- Live Insignia player counts and open lobbies from [xb.live](https://xb.live) by **BeLieVeDxKiLLeR**.
 - The [Orbitron](https://github.com/theleagueof/orbitron) font (SIL Open Font License).
 - LZMA SDK (public domain), UnRAR (freeware licence) and Project Nayuki's
   [QR Code generator](https://github.com/nayuki/QR-Code-generator) (MIT).
