@@ -303,8 +303,19 @@ Please don't take problems with these builds to the original emulator teams: the
 
 ## ❤️ Support the project
 
-Game Vault is free and stays free. If you'd like to help keep the test console and the development PC running,
-you can support it on **[Patreon](https://www.patreon.com/Skitzelles)**. ❤️
+Game Vault and all of its emulator builds are free, and they always will be. No ads, no locked features,
+nothing behind a paywall.
+
+I build all of this with the help of an AI coding assistant (Claude), and that's what lets bug fixes and new features
+come out so fast. If you'd like to help keep it going, you can support the project on
+**[Patreon](https://www.patreon.com/Skitzelles)**. Every bit helps, and there's never any pressure.
+
+**You help just as much by:**
+- saying yes to **"Help make Game Vault better?"** in Game Vault. It sends crash reports, and that's how most fixes happen
+- reporting problems on the **[Discord](https://discord.gg/RmhhWgguvw)**
+- telling your friends and sharing your clips
+
+Thank you for playing. 💙
 
 ## 🙏 Credits
 
