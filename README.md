@@ -247,6 +247,7 @@ Game Vault has no account, no ads and no tracking. It connects to these places o
 | Skitzelles' private report storage (Backblaze B2) | Problem reports: the session logs of the games you played (game file name, speed, memory, the buttons held, what happened, crash details, the console model), Game Vault's own log, and XBSX2's and RetroArch's own logs of their last session (game file name, settings, error messages); after a crash, also the last few small pictures of the screen (320x240) from before it | **Only if you said yes**; turn it off any time with **Menu** |
 | GameTDB and the libretro thumbnail server | Game names, box art, and the small preview pictures (title screen, a picture of the game) | Box art when a game is new to the library; preview pictures when you stop on a game, once |
 | LaunchBox Games Database pictures (images.launchbox-app.com) | Box art for games the servers above have none for | When a game without a cover is new to the library |
+| LaunchBox Games Database pictures (images.launchbox-app.com) | A game page's background, logo and screenshots, asked for by the picture names in Game Vault's own lists (nothing about you) | The first time you open that game's page |
 | Flashpoint Archive pictures (infinity.flashpointarchive.org) | The logo picture of a Flash game, asked for by Flashpoint's ID for it | When a Flash game without a cover is new to the library |
 | ScreenScraper (screenscraper.fr) | Game videos: the game's file name and name, with Game Vault's own app login (no account of yours), then the short clip of that game | Only when Game videos are on (Options > Look & sound; off by default), for the game you stop on, once |
 | RetroAchievements (retroachievements.org) | Only if you sign in (Options > Saves & play > Achievements): your RetroAchievements name and password once, from your phone; then RetroArch uses the sign-in key it gets back to unlock achievements as you play. The password is never kept on the Xbox | Only after you signed in, while you play a RetroArch game |
@@ -332,7 +333,7 @@ Thank you for playing. 💙
   PCSX-Redux team (PlayStation, MIT), OpenPS2BIOS by Tamariba Devs (PlayStation 2, MIT, beta),
   [EmuTOS](https://emutos.sourceforge.io) (Atari ST, GPL-2.0) and [C-BIOS](https://cbios.sourceforge.net) (MSX, BSD).
 - Title data from GameTDB and the libretro database (Redump lists), box art from the libretro thumbnail server.
-- Game info (genres, years, players, ratings, descriptions) and more box art from the [LaunchBox Games Database](https://gamesdb.launchbox-app.com).
+- Game info (genres, years, players, ratings, descriptions), game page backgrounds, logos and screenshots, and more box art from the [LaunchBox Games Database](https://gamesdb.launchbox-app.com).
 - Flash game pictures from the [Flashpoint Archive](https://flashpointarchive.org), and game videos from
   [ScreenScraper](https://www.screenscraper.fr).
 - Achievements by [RetroAchievements](https://retroachievements.org).
