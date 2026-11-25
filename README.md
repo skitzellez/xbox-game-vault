@@ -86,7 +86,7 @@ port of the original Xbox emulator **xemu**, and it sets up the other emulators 
 | 💾 **Saves on your stick** | Saves, memory cards, save states and BIOS files live in a `Game Vault` folder on the USB drive, right next to your games. |
 | 🛟 **Silent backup** | The console keeps a copy of your saves. Lose the stick, plug in a new one, and they come back by themselves. |
 | ⚡ **Big collections** | Thousands of games load in seconds once they have been seen. |
-| 🧰 **One setup program** | Run it once on a Windows PC (or a Mac, beta) and it installs everything on the console. |
+| 🧰 **One setup program** | Run it once on a Windows PC, Mac (beta) or Linux PC and it installs everything on the console. |
 
 ## 🕹️ Supported systems
 
@@ -131,7 +131,7 @@ All of them need **Developer Mode**. Game Vault does not run in retail mode.
 
 - An Xbox in **Developer Mode**. This needs a Microsoft Partner Center developer account, which has a one-time
   fee. Microsoft's guide: [Xbox Developer Mode activation](https://learn.microsoft.com/windows/uwp/xbox-apps/devkit-activation).
-- A Windows PC (or a Mac: beta) on the same network, for the one-time setup.
+- A Windows PC, Mac (beta) or Linux PC on the same network, for the one-time setup.
 - A USB drive with your games.
 - Optional: BIOS files from your own consoles, for the systems that need them (Sega CD, arcade boards and a few
   others). PlayStation and PlayStation 2 start with a free BIOS; your own plays more games and is used first. Put them
@@ -149,6 +149,8 @@ All of them need **Developer Mode**. Game Vault does not run in retail mode.
    - **Mac (BETA, tested on macOS Sonoma 14.7):** download **GameVault-Setup-Mac-BETA.zip** from the
      [Mac setup beta](https://github.com/skitzellez/xbox-game-vault/releases/tag/mac-setup-beta-1) and follow
      the step-by-step guide: **[docs/MAC-SETUP.md](docs/MAC-SETUP.md)**.
+   - **Linux:** run `bash ./GameVault-Setup.sh` (or double-click **Install Game Vault (Linux).sh**); see the
+     step-by-step guide: **[docs/LINUX-SETUP.md](docs/LINUX-SETUP.md)**.
 4. Type in the console's address, user name and password. The setup installs Game Vault, xemu and the
    emulators, and moves over anything you already had in the older RetroArch or XBSX2 apps.
 5. In **Dev Home**, highlight each new app, press **Menu → View details**, and set **App type** to **Game**.
@@ -216,7 +218,7 @@ the library. Press **RT** and Game Vault shows two QR codes: the first downloads
 second opens your Xbox's Device Portal (the phone must be on the same network as the Xbox). In the Device Portal, tap
 **Add** under *My games & apps*, choose the downloaded file, then **Next** and **Start**. When several are out, the
 emulators come first and Game Vault last (**RB** goes to the next one). Your games, saves and settings are kept.
-PPSSPP and Flycast still update through the setup on a PC or Mac.
+PPSSPP and Flycast still update through the setup on a PC, Mac or Linux machine.
 
 ## 🐞 Reporting a problem
 

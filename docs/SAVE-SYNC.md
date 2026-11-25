@@ -29,9 +29,10 @@ Game Vault syncs when it opens, after every game, and when you switch it on.
 
 ### 1. Share a folder from your PC (once)
 
-Run **Share games with Xbox** from `GameVault-Setup.zip` on your PC (you may already have done this for network
-games). It makes a `Game Vault saves` folder inside the shared folder; that is the only place the Xbox may write.
-Your games stay read-only.
+Run **Share games with Xbox** from `GameVault-Setup.zip` on your Windows or Linux PC (`Share games with Xbox.bat` on
+Windows, `Share-Games-With-Xbox.sh` on Linux; you may already have done this for network games). It makes a
+`Game Vault saves` folder inside the shared folder; that is the only place the Xbox may write. Your games stay
+read-only.
 
 Already set up from an older version? Run it again and pick the same folder. When it asks for a password,
 **press Enter**: the password stays the same and there is nothing to type on the Xbox.

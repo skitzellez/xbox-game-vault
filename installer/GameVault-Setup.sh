@@ -1,9 +1,9 @@
 #!/bin/bash
 # Copyright (c) 2026 Skitzelles - part of Game Vault, https://github.com/skitzellez/xbox-game-vault
 # PolyForm Noncommercial License 1.0.0: not for sale, and this notice stays in every copy.
-# Game Vault all-in-one setup for an Xbox Series X|S or Xbox One in Dev Mode, for a Mac that is on the same
-# network as the console (double-click "Install Game Vault (Mac).command"). Does the same as the Windows setup
-# (GameVault-Setup.ps1); written for the bash 3.2 that comes with macOS, with only the Mac's own tools.
+# Game Vault all-in-one setup for an Xbox Series X|S or Xbox One in Dev Mode, for a Mac or Linux PC that is on the
+# same network as the console (double-click "Install Game Vault (Mac).command" or "Install Game Vault (Linux).sh").
+# Does the same as the Windows setup (GameVault-Setup.ps1); written for bash 3.2+ with only built-in system tools.
 #
 # What it does, through the console's Device Portal:
 #   1. installs or updates Game Vault and xemu (from their GitHub releases) and the emulators Game Vault starts:
@@ -22,19 +22,21 @@
 #   --yes                 do not ask for confirmation
 
 Console=""; User=""; Password=""; BiosFolder=""; Skip=""; Force=""; Yes=""
-while [ $# -gt 0 ]; do
-    case "$1" in
-        --console|-Console) Console="$2"; shift ;;
-        --user|-User) User="$2"; shift ;;
-        --password|-Password) Password="$2"; shift ;;
-        --bios-folder|-BiosFolder) BiosFolder="$2"; shift ;;
-        --skip|-Skip) Skip="$2"; shift ;;
-        --force|-Force) Force="$2"; shift ;;
-        --yes|-Yes|-y) Yes=1 ;;
-        *) echo "unknown option: $1"; exit 1 ;;
-    esac
-    shift
-done
+if [ -z "${GV_SETUP_LIB_ONLY:-}" ]; then
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --console|-Console) Console="$2"; shift ;;
+            --user|-User) User="$2"; shift ;;
+            --password|-Password) Password="$2"; shift ;;
+            --bios-folder|-BiosFolder) BiosFolder="$2"; shift ;;
+            --skip|-Skip) Skip="$2"; shift ;;
+            --force|-Force) Force="$2"; shift ;;
+            --yes|-Yes|-y) Yes=1 ;;
+            *) echo "unknown option: $1"; exit 1 ;;
+        esac
+        shift
+    done
+fi
 
 here="$(cd "$(dirname "$0")" && pwd)"
 if [ "$(uname)" = "Darwin" ]; then work="$HOME/Library/Caches/GameVaultSetup"; else work="${XDG_CACHE_HOME:-$HOME/.cache}/GameVaultSetup"; fi
@@ -51,12 +53,157 @@ say()  { local c="0"; case "${2:-}" in Red) c="31";; Green) c="32";; Yellow) c="
 head_() { echo ""; say "== $1" Cyan; }
 ask()  { local a; read -r -p "$1" a; printf '%s' "$a"; }
 
-# JSON and text helper (setup-helper.js): the Mac's own JavaScript, else Node.js
+# JSON and text helper (setup-helper.js): the Mac's own JavaScript, else Node.js, else Python 3 (Linux / macOS)
 helper="$here/setup-helper.js"
-if command -v osascript >/dev/null 2>&1; then js() { osascript -l JavaScript "$helper" "$@" 2>/dev/null; }
-elif command -v node >/dev/null 2>&1; then js() { node "$helper" "$@" 2>/dev/null; }
-else say "This setup needs a Mac (or Node.js on other systems)." Red; exit 1; fi
-if [ ! -f "$helper" ]; then say "setup-helper.js is missing: unzip the whole GameVault-Setup.zip and run this again." Red; exit 1; fi
+py_bin=""
+if command -v python3 >/dev/null 2>&1; then py_bin="python3"
+elif command -v python >/dev/null 2>&1; then py_bin="python"; fi
+
+py_js() {
+    "${py_bin:-python3}" - "$@" 2>/dev/null <<'PYEOF'
+import json, math, re, sys
+
+NAMES = [
+    "Up=DPadUp", "Right=DPadRight", "Down=DPadDown", "Left=DPadLeft", "Triangle=FaceNorth", "Circle=FaceEast",
+    "Cross=FaceSouth", "Square=FaceWest", "Select=Back", "Start=Start", "L1=LeftShoulder", "L2=+LeftTrigger",
+    "R1=RightShoulder", "R2=+RightTrigger", "L3=LeftStick", "R3=RightStick", "LUp=-LeftY", "LRight=+LeftX",
+    "LDown=+LeftY", "LLeft=-LeftX", "RUp=-RightY", "RRight=+RightX", "RDown=+RightY", "RLeft=-RightX",
+    "LargeMotor=LargeMotor", "SmallMotor=SmallMotor"
+]
+
+def pad_buttons(n):
+    return [f"{k} = SDL-{n}/{v}" for k, v in (x.split("=", 1) for x in NAMES)]
+
+def pad_section(text, port):
+    m = re.search(rf"^\[Pad{port}\]\r?\n", text, re.M)
+    if not m:
+        return None
+    start = m.start()
+    body_start = m.end()
+    m_next = re.search(r"^\[", text[body_start:], re.M)
+    end = len(text) if not m_next else body_start + m_next.start()
+    return {"start": start, "length": end - start, "body": text[body_start:end]}
+
+def add_pad_buttons(text):
+    nl = "\r\n" if "\r\n" in text else "\n"
+    changed = False
+    for n in range(2):
+        sec = pad_section(text, n + 1)
+        if not sec:
+            continue
+        lines = [l for l in re.split(r"\r?\n", sec["body"]) if l.strip()]
+        if any(re.match(r"^Cross\s*=", l) for l in lines):
+            continue
+        type_line = next((l for l in lines if re.match(r"^Type\s*=", l)), "")
+        ptype = re.sub(r"^Type\s*=\s*", "", type_line)
+        if n == 1 and ptype == "None":
+            first = pad_section(text, 1)
+            first_body = first["body"] if first else ""
+            lines = [l for l in re.split(r"\r?\n", first_body) if l.strip() and "SDL-" not in l]
+            ptype = "DualShock2"
+        if ptype != "DualShock2":
+            continue
+        section = nl.join([f"[Pad{n + 1}]"] + lines + pad_buttons(n) + ["", "", ""])
+        text = text[:sec["start"]] + section + text[sec["start"] + sec["length"]:]
+        changed = True
+    return text if changed else None
+
+def main():
+    args = sys.argv[1:]
+    if len(args) < 2:
+        print("")
+        return
+    path, cmd, a = args[0], args[1], args[2:]
+    try:
+        with open(path, "rb") as f:
+            text = f.read().decode("utf-8", errors="replace")
+    except Exception:
+        text = ""
+    if cmd == "padfix":
+        t = add_pad_buttons(text)
+        if t is None:
+            print("")
+            return
+        with open(a[0], "wb") as f:
+            f.write(t.encode("utf-8"))
+        print("changed")
+        return
+    if cmd == "hasPad1":
+        print("yes" if re.search(r"^\[Pad1\]", text, re.M) else "")
+        return
+    try:
+        d = json.loads(text)
+    except Exception:
+        print("")
+        return
+    if d is None:
+        print("")
+        return
+    if cmd == "get" and isinstance(d, dict):
+        v = d.get(a[0]) if a else None
+        print("" if v is None else str(v))
+    elif cmd == "setting" and isinstance(d, dict):
+        s = next((x for x in (d.get("Settings") or []) if x.get("Name") == (a[0] if a else "")), None)
+        print(str(s.get("Value")) if s and s.get("Value") is not None else "")
+    elif cmd == "package" and isinstance(d, dict):
+        pref = (a[0] if a else "").lower()
+        p = next((x for x in (d.get("InstalledPackages") or []) if str(x.get("PackageFullName", "")).lower().startswith(pref)), None)
+        if not p:
+            print("")
+        else:
+            v = p.get("Version") or {}
+            ver = ".".join(str(v.get(k, "")) for k in ("Major", "Minor", "Build", "Revision"))
+            print("\t".join([str(p.get("PackageFullName", "")), str(p.get("PackageFamilyName") or ""), str(p.get("PackageRelativeId") or ""), ver]))
+    elif cmd == "state" and isinstance(d, dict):
+        if d.get("Success"):
+            print("ok")
+        else:
+            msg = f"{d.get('Reason') or ''} {d.get('CodeText') or ''}".strip()
+            print(msg or "failed")
+    elif cmd == "items" and isinstance(d, dict):
+        out = [f"{'dir' if (int(i.get('Type', 0)) & 16) else 'file'}\t{i.get('Name', '')}" for i in (d.get("Items") or [])]
+        print("\n".join(out))
+    elif cmd == "release":
+        if not isinstance(d, list):
+            print("ERROR")
+            return
+        rx = re.compile(a[0] if a else "", re.I)
+        rels = sorted(d, key=lambda x: str(x.get("published_at") or ""), reverse=True)
+        for rel in rels:
+            assets = [x for x in (rel.get("assets") or []) if rx.search(str(x.get("name", "")))]
+            if not assets:
+                continue
+            as0 = assets[0]
+            m = re.search(r"(\d+(\.\d+)+)", str(as0.get("name", "")))
+            ver = m.group(1) if m else re.sub(r"^[^\d]*", "", str(rel.get("tag_name") or ""))
+            size_mb = int(math.floor(float(as0.get("size", 0)) / 1048576.0 + 0.5))
+            print("\t".join([str(as0.get("browser_download_url", "")), str(as0.get("name", "")), ver, str(size_mb)]))
+            return
+        print("")
+    elif cmd == "stabletag":
+        if not isinstance(d, list):
+            print("ERROR")
+            return
+        st = sorted([x for x in d if not x.get("prerelease")], key=lambda x: str(x.get("published_at") or ""), reverse=True)
+        print(re.sub(r"^v", "", str(st[0].get("tag_name", ""))) if st else "")
+    else:
+        print("")
+
+main()
+PYEOF
+}
+
+if command -v osascript >/dev/null 2>&1; then
+    [ ! -f "$helper" ] && { say "setup-helper.js is missing: unzip the whole GameVault-Setup.zip and run this again." Red; exit 1; }
+    js() { osascript -l JavaScript "$helper" "$@" 2>/dev/null; }
+elif command -v node >/dev/null 2>&1 && [ -f "$helper" ]; then
+    js() { node "$helper" "$@" 2>/dev/null; }
+elif [ -n "$py_bin" ]; then
+    js() { py_js "$@"; }
+else
+    say "This setup needs Python 3 or Node.js (or macOS)." Red
+    exit 1
+fi
 
 # a file for curl -F, quoted: a comma or semicolon in its name would otherwise cut it up
 form_file() { printf '%s=@"%s"' "$1" "$(printf '%s' "$2" | sed 's/[\\"]/\\&/g')"; }
@@ -86,10 +233,43 @@ unpack() {                           # a zip -> the folder it was unpacked into
     local dir="$1.files"
     if [ ! -d "$dir" ]; then
         mkdir -p "$dir"
-        if command -v ditto >/dev/null 2>&1; then ditto -x -k "$1" "$dir"; else unzip -q -o "$1" -d "$dir"; fi
+        if command -v ditto >/dev/null 2>&1; then ditto -x -k "$1" "$dir"
+        elif command -v unzip >/dev/null 2>&1; then unzip -q -o "$1" -d "$dir"
+        elif [ -n "$py_bin" ]; then "$py_bin" -m zipfile -e "$1" "$dir"
+        else say "Cannot unpack $1: install unzip or python3." Red >&2; return 1; fi
     fi
     printf '%s' "$dir"
 }
+# cleans a folder dragged into a Mac or Linux terminal (quotes, file:// URI with %20 escapes, or \ before spaces)
+clean_path() {
+    local p="$1"
+    p="${p#"${p%%[![:space:]]*}"}"; p="${p%"${p##*[![:space:]]}"}"
+    case "$p" in
+        \'*\'|\"*\") p="${p:1:${#p}-2}" ;;
+        *) p="$(printf '%s' "$p" | sed 's/\\\(.\)/\1/g')" ;;
+    esac
+    case "$p" in
+        file://localhost/*) p="/${p#file://localhost/}"; p="${p//\\/\\\\}"; p="$(printf '%b' "${p//%/\\x}")" ;;
+        file:///*) p="/${p#file:///}"; p="${p//\\/\\\\}"; p="$(printf '%b' "${p//%/\\x}")" ;;
+    esac
+    printf '%s' "$p"
+}
+# resolves a drive name alone (e.g. MYUSB) to /Volumes/MYUSB on Mac or /run/media/$USER/MYUSB, /media/..., /mnt/... on Linux
+resolve_bios_folder() {
+    local p; p="$(clean_path "$1")"
+    if [ -n "$p" ] && [ "$p" != "none" ] && [ ! -e "$p" ]; then
+        local u="${USER:-$(id -un 2>/dev/null)}" cand
+        for cand in "/Volumes/$p" "/run/media/$u/$p" "/media/$u/$p" "/media/$p" "/mnt/$p"; do
+            if [ -d "$cand" ]; then p="$cand"; break; fi
+        done
+    fi
+    printf '%s' "$p"
+}
+if [ -n "${GV_SETUP_LIB_ONLY:-}" ]; then return 0 2>/dev/null || exit 0; fi
+if ! command -v curl >/dev/null 2>&1; then
+    say "curl is not installed. Install curl with your package manager (for example: sudo apt install curl) and run this again." Red
+    exit 1
+fi
 
 say ""
 say "Game Vault setup, by Skitzelles" White
@@ -453,14 +633,9 @@ if [ -z "$BiosFolder" ]; then
     say "If you have such files, drag their folder or USB drive into this window (or type its name)."
     BiosFolder="$(ask "Folder or drive to search, or just Enter to skip: ")"
 fi
-# a folder dragged into Terminal arrives quoted or with \ before spaces
-BiosFolder="${BiosFolder#"${BiosFolder%%[![:space:]]*}"}"; BiosFolder="${BiosFolder%"${BiosFolder##*[![:space:]]}"}"
-case "$BiosFolder" in
-    \'*\'|\"*\") BiosFolder="${BiosFolder:1:${#BiosFolder}-2}" ;;
-    *) BiosFolder="$(printf '%s' "$BiosFolder" | sed 's/\\\(.\)/\1/g')" ;;
-esac
-# a drive's name alone, e.g. MYUSB -> /Volumes/MYUSB
-if [ -n "$BiosFolder" ] && [ "$BiosFolder" != "none" ] && [ ! -e "$BiosFolder" ] && [ -d "/Volumes/$BiosFolder" ]; then BiosFolder="/Volumes/$BiosFolder"; fi
+# a folder dragged into Terminal arrives quoted, as file://..., or with \ before spaces; a drive's name alone
+# (e.g. MYUSB) is looked up in /Volumes (Mac) or /run/media, /media, /mnt (Linux)
+BiosFolder="$(resolve_bios_folder "$BiosFolder")"
 
 # name on your drive (lower case) -> the system. Names are the ones the emulators look for.
 bios_system() {
@@ -587,7 +762,8 @@ elif ! installed "GamerDad.XeniaForGameVault" && installed "27d6ba69-e4f1-4b69-b
 if [ -z "$need_drives" ]; then
     say "   not needed: Game Vault and its emulators read games from any USB drive" DarkGray
 else
-    say "   This console's emulators need an NTFS drive with read access for apps. A Mac cannot set that up:" Yellow
+    if [ "$(uname)" = "Darwin" ]; then host_os="A Mac"; else host_os="Linux"; fi
+    say "   This console's emulators need an NTFS drive with read access for apps. $host_os cannot set that up:" Yellow
     say "   prepare the drive once on a Windows PC (see step 7)." Yellow
 fi
 
