@@ -240,13 +240,14 @@ Tip: send the log before you play that game again, as each new session replaces 
 
 ## 🔒 Privacy: what Game Vault sends
 
-Game Vault has no account, no ads and no tracking. It connects to these places only:
+Game Vault has no account of its own (you can sign in with Discord if you want), no ads and no tracking. It connects to these places only:
 
 | Where | What for | When |
 |---|---|---|
 | Skitzelles' private report server (cdn.gamevault.fyi; Backblaze B2 only when that one can't be reached) | Problem reports: the session logs of the games you played (game file name, speed, memory, the buttons held, what happened, crash details, the console model), Game Vault's own log, and XBSX2's and RetroArch's own logs of their last session (game file name, settings, error messages); after a crash, also the last few small pictures of the screen (320x240) from before it | **Only if you said yes**; turn it off any time with **Menu** |
 | Game Vault's shader sharing (cdn.gamevault.fyi) | Xbox 360 and original Xbox only: the graphics data Xenia and xemu prepare for a game (the game's own shader code and draw settings, and which of them it uses first), filed under the game's ID. Nothing about you, your console or your files | When an Xbox 360 or original Xbox game starts (it takes what other players shared) and every few minutes while it runs (it sends what your console added) |
 | Game Vault's cover cache (cdn.gamevault.fyi) | Box art and preview pictures from libretro's and LaunchBox's collections, asked for by the game's name (nothing about you). The cache fetches each picture from those collections once for everyone | When a game is new to the library, and preview pictures when you stop on a game, once |
+| Game Vault's Discord sign-in (gamevault.fyi), only if you link your Discord | Your Discord name and picture, a one-way code made on your console (so the link survives a reinstall), and which game and system you start, so your Discord profile can show it. Only your latest status is kept. Unlink or delete everything any time (Options > Saves & play > Discord account, or gamevault.fyi/account); see [the privacy policy](https://gamevault.fyi/privacy/) | When Game Vault opens, every 3 minutes while it is open, and when a game starts |
 | Game Vault's server (cdn.gamevault.fyi) | Downloads only, nothing about you: the compatibility list (how each Xbox and Xbox 360 game runs for players), per-game fixes for Xenia and xemu, and original Xbox online player counts and game nights, which the server gets from xb.live once for everyone (xb.live itself when the server can't be reached) | A game page opens; Xenia or xemu starts (at most every 6 hours); you look at an original Xbox game |
 | GameTDB and the libretro thumbnail server | Game names, box art, and the small preview pictures (title screen, a picture of the game) | Box art when a game is new to the library; preview pictures when you stop on a game, once |
 | LaunchBox Games Database pictures (images.launchbox-app.com) | Box art for games the servers above have none for | When a game without a cover is new to the library |
