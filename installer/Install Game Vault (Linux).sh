@@ -15,7 +15,7 @@ if [ ! -t 0 ] && [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then
         fi
     done
 fi
-bash ./GameVault-Setup.sh "$@"
+bash "./Setup Files/GameVault-Setup.sh" "$@"
 echo
 read -r -n 1 -s -p "Press any key to close this window."
 echo

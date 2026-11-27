@@ -35,14 +35,15 @@ Leave the Xbox on, in Dev Home.
 1. Download **GameVault-Setup.zip** from the [latest release](https://github.com/skitzellez/xbox-game-vault/releases/latest)
    and unzip it into a folder.
 
-Inside the **GameVault-Setup** folder you will see:
+Inside the **Game Vault Setup** folder you will see:
 
-- `GameVault-Setup.sh`: the console setup itself
-- `Install Game Vault (Linux).sh`: a double-click starter for Linux desktops
-- `Share-Games-With-Xbox.sh` and `Share games with Xbox (Linux).sh`: shares a games folder on your Linux PC with your Xbox
-- `setup-helper.js` and a `files` folder
+- `Install Game Vault (Linux).sh`: starts the setup
+- `Share Games With Xbox (Linux).sh`: shares a games folder on your Linux PC with your Xbox
+- a **Setup Files** folder with everything the starters use (`GameVault-Setup.sh`, `Share-Games-With-Xbox.sh`,
+  `setup-helper.js` and a `files` folder)
 
-Keep these together in the same folder.
+The Windows and Mac starters are there too; you can ignore them. Keep everything together and don't move files out
+of **Setup Files**.
 
 ---
 
@@ -50,11 +51,11 @@ Keep these together in the same folder.
 
 ### Way A: through a terminal (recommended)
 
-1. Open your terminal app in the unzipped **GameVault-Setup** folder (or right-click inside the folder and choose
+1. Open your terminal app in the unzipped **Game Vault Setup** folder (or right-click inside the folder and choose
    **Open in Terminal**).
 2. Run:
    ```bash
-   bash ./GameVault-Setup.sh
+   bash "./Install Game Vault (Linux).sh"
    ```
 
 ### Way B: double-click
@@ -110,9 +111,9 @@ network, and keep your saves synced with `Game Vault saves` (see [docs/SAVE-SYNC
 
 1. Run:
    ```bash
-   bash ./Share-Games-With-Xbox.sh
+   bash "./Share Games With Xbox (Linux).sh"
    ```
-   (or double-click **Share games with Xbox (Linux).sh**).
+   (or double-click **Share Games With Xbox (Linux).sh**).
 2. Choose the folder that holds your games.
 3. The script asks for administrator (`sudo`) permission once. If **Samba** is not installed yet, it offers to install
    it through your distro's package manager (`apt`, `dnf`, `pacman`, or `zypper`).
@@ -130,7 +131,7 @@ work, but Save Sync needs the folder on a Linux drive (ext4) or on the PC's own 
 
 ## Updating later
 
-Run `bash ./GameVault-Setup.sh` again. It only downloads what has a newer version and leaves your saves and settings
+Run `bash "./Install Game Vault (Linux).sh"` again. It only downloads what has a newer version and leaves your saves and settings
 alone. Game Vault itself also shows an **RT Update** badge when a new version is out, which you can install with your
 phone (see the main README).
 
@@ -145,5 +146,5 @@ phone (see the main README).
 | **cannot be checked: ... GitHub may be limiting requests** | GitHub allows only a few checks per hour from one address. Wait an hour and run it again. |
 | An app shows **FAILED** | Run the setup again. It retries only what is missing. |
 | Xbox cannot connect to the `XboxGames` network share | Check that your firewall allows Samba (`sudo ufw allow Samba` or `sudo firewall-cmd --permanent --add-service=samba && sudo firewall-cmd --reload`) and that `smbd` (`smb` on Fedora/Arch) is running. |
-| Save Sync does not save to a shared exFAT or NTFS drive | Those drives have no Linux permissions, so the share is read-only to keep your games safe. Put the games folder on an ext4 drive or on the PC's own disk, and run `Share-Games-With-Xbox.sh` again. |
+| Save Sync does not save to a shared exFAT or NTFS drive | Those drives have no Linux permissions, so the share is read-only to keep your games safe. Put the games folder on an ext4 drive or on the PC's own disk, and run `Share Games With Xbox (Linux).sh` again. |
 | Xbox One: **needs an NTFS drive with read access for apps** | Linux cannot set the Windows `ALL APPLICATION PACKAGES` NTFS security descriptor. Prepare that USB drive once on a Windows PC (see the main README). On a Series X\|S this is not needed. |

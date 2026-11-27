@@ -15,4 +15,4 @@ if [ ! -t 0 ] && [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then
         fi
     done
 fi
-bash ./Share-Games-With-Xbox.sh "$@"
+bash "./Setup Files/Share-Games-With-Xbox.sh" "$@"

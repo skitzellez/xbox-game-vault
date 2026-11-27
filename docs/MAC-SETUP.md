@@ -40,16 +40,15 @@ Leave the Xbox on, in Dev Home.
    **[Mac setup (BETA)](https://github.com/skitzellez/xbox-game-vault/releases/tag/mac-setup-beta-1)**
 2. Under **Assets**, click **GameVault-Setup-Mac-BETA.zip**.
 3. Open your **Downloads** folder in Finder. Safari usually unzips it by itself into a folder named
-   **GameVault-Setup**. If you only see the `.zip`, double-click it to unzip it.
+   **Game Vault Setup**. If you only see the `.zip`, double-click it to unzip it.
 
-Inside the **GameVault-Setup** folder you should see:
+Inside the **Game Vault Setup** folder you should see:
 
-- `GameVault-Setup.sh`: the setup itself
+- `READ ME FIRST (BETA).txt`
 - `Install Game Vault (Mac).command`: a double-click starter
-- `setup-helper.js`
-- a `files` folder
+- a **Setup Files** folder with `GameVault-Setup.sh` (the setup itself), `setup-helper.js` and a `files` folder
 
-Keep these together in the same folder.
+Keep everything together and don't move files out of **Setup Files**.
 
 ---
 
@@ -62,10 +61,10 @@ There are two ways to start it. **Way A always works**; way B is quicker but mac
 1. Open **Terminal**. Press **⌘ Command + Space**, type `Terminal` and press **Return**. Or find it in Finder
    under **Applications → Utilities → Terminal**.
 2. In the Terminal window, type `bash` followed by **one space**. Do **not** press Return yet.
-3. Drag **GameVault-Setup.sh** from the Finder window into the Terminal window and let go. Its full path appears
-   after `bash `, for example:
+3. Open the **Setup Files** folder in Finder, drag **GameVault-Setup.sh** into the Terminal window and let go. Its
+   full path appears after `bash `, for example:
    ```
-   bash /Users/yourname/Downloads/GameVault-Setup/GameVault-Setup.sh
+   bash "/Users/yourname/Downloads/Game Vault Setup/Setup Files/GameVault-Setup.sh"
    ```
 4. Press **Return**.
 
@@ -136,7 +135,7 @@ install with your phone (see the main README).
 | **"cannot be opened" / "could not be verified"** | Use way A (Terminal) in step 3, or **Open Anyway** as described in way B. |
 | **Permission denied** when starting | Use way A: typing `bash` in front starts it whatever the file's settings are. |
 | **cannot be checked: ... GitHub may be limiting requests** | GitHub allows only a few checks per hour from one address. Wait an hour and run it again. |
-| **setup-helper.js is missing** | Unzip the whole download and keep all files in the same folder. Don't move `GameVault-Setup.sh` out on its own. |
+| **setup-helper.js is missing** | Unzip the whole download and keep all files in the same folder. Don't move `GameVault-Setup.sh` out of **Setup Files** on its own. |
 | An app shows **FAILED** | Run the setup again. It retries only what is missing. If it fails again, report it (below). |
 | Xbox One: **needs an NTFS drive with read access for apps** | A Mac cannot set that up. Prepare that USB drive once on a Windows PC (see the main README). On a Series X\|S this is not needed. |
 
