@@ -6,14 +6,16 @@
 
 <p align="center">
   <b>Plug in a USB stick, pick a game, play.</b><br>
-  The all-in-one game library for <b>Xbox Series X|S</b> in Dev Mode: <b>94 systems</b>, from original Xbox, Xbox 360,
-  PlayStation 1, 2 and 3, PS Vita, GameCube, Wii, Wii U and Dreamcast to arcade, classic consoles, home computers and homebrew,
+  The all-in-one game library for <b>Xbox Series X|S</b> in Dev Mode: <b>nearly 100 systems</b>, from original Xbox, Xbox 360,
+  PlayStation 1, 2 and 3, PSP, PS Vita, GameCube, Wii, Wii U, 3DS, Saturn and Dreamcast to arcade, pinball, MUGEN, classic consoles, home computers and homebrew,
   made for the TV and the controller.
 </p>
 
 <!-- gv-buttons:start -->
 <p align="center">
   <a href="https://github.com/skitzellez/xbox-game-vault/releases/latest"><img alt="DOWNLOAD Game Vault" src="https://img.shields.io/badge/DOWNLOAD-Game%20Vault-107C10?style=for-the-badge&logo=xbox&logoColor=white"></a>
+  &nbsp;
+  <a href="https://gamevault.fyi"><img alt="Game Vault website" src="https://img.shields.io/badge/WEBSITE-gamevault.fyi-1E5BD8?style=for-the-badge&logo=googlechrome&logoColor=white"></a>
   &nbsp;
   <a href="#-installation"><img alt="HOW TO INSTALL" src="https://img.shields.io/badge/HOW%20TO-INSTALL-0B7DDA?style=for-the-badge"></a>
   &nbsp;
@@ -72,7 +74,7 @@ port of the original Xbox emulator **xemu**, and it sets up the other emulators 
 |---|---|
 | 🔌 **Plug and play** | Put your games on a USB stick in any folders, with any names. FAT32, exFAT and NTFS all work as they are, with no formatting or permissions to set. |
 | 🔎 **Knows every game** | Reads the files themselves, so a PlayStation 2 game is never mistaken for a PlayStation one. Zipped and packed games (ZIP, 7z, RAR, CHD) work too. |
-| 🗂️ **95 systems, a tidy shelf** | Each big console has its own tab; arcade boards share ARCADE, and the smaller systems share COMPUTERS, MORE CONSOLES, PC GAMES and HOMEBREW. |
+| 🗂️ **Nearly 100 systems, a tidy shelf** | Each big console has its own tab; arcade boards share ARCADE, and the smaller systems share COMPUTERS, MORE CONSOLES, PC GAMES and HOMEBREW. |
 | 🌐 **Games from your PC or NAS** | Add a network share once; most games play straight from it, no copying. |
 | 🖼️ **Box art and names** | Filled in by themselves, with a neat made-up box for the rare game no one has a cover for. |
 | 🏆 **Achievements** | Earn RetroAchievements in your classic games. Sign in once with your phone. |
@@ -90,7 +92,7 @@ port of the original Xbox emulator **xemu**, and it sets up the other emulators 
 
 ## 🕹️ Supported systems
 
-**94 systems.** Put each system's games in a folder named after it for the best results (file types that several
+**Nearly 100 systems.** Put each system's games in a folder named after it for the best results (file types that several
 systems share, like `.dsk` or `.bin`, are only read that way).
 
 | System | Plays in |
@@ -104,17 +106,22 @@ systems share, like `.dsk` or `.bin`, are only read that way).
 | Wii U | Game Vault · Wii U (ours, based on Cemu) |
 | Sega NAOMI, NAOMI 2, Atomiswave | Flycast for Game Vault (ours, based on Flycast) |
 | Dreamcast | Flycast (ours, or the original Flycast app) |
-| PSP | PPSSPP |
-| PlayStation, Saturn, Sega CD, PC Engine CD, 3DO, Neo Geo CD, PC-FX, CD-i, Amiga CD32 | RetroArch for Game Vault (ours, based on RetroArch) |
-| Nintendo: NES, Famicom Disk System, SNES, Satellaview, N64, Game Boy / Color / Advance, DS, 3DS, Virtual Boy, Pokémon Mini, Game & Watch | RetroArch for Game Vault |
+| PSP | PPSSPP for Game Vault (ours, based on PPSSPP) |
+| Sega Saturn | Game Vault · Ymir (ours, based on Ymir) |
+| Nintendo 3DS | Game Vault · Azahar (ours, based on Azahar) |
+| MUGEN fighting games | Game Vault · Ikemen GO (ours, based on Ikemen GO) |
+| Pinball tables (.vpx) | Game Vault · Visual Pinball (ours, based on Visual Pinball X and PinMAME) |
+| PlayStation, Sega CD, PC Engine CD, 3DO, Neo Geo CD, PC-FX, CD-i, Amiga CD32 | RetroArch for Game Vault (ours, based on RetroArch) |
+| Nintendo: NES, Famicom Disk System, SNES, Satellaview, N64, Game Boy / Color / Advance, DS, Virtual Boy, Pokémon Mini, Game & Watch | RetroArch for Game Vault |
 | Sega: Master System, SG-1000, Genesis, 32X, Game Gear, Pico; NEC: PC Engine, SuperGrafx; Atari: 2600, 5200, 7800, Lynx, Jaguar | RetroArch for Game Vault |
 | More consoles: Neo Geo Pocket, WonderSwan, ColecoVision, Intellivision, Vectrex, Channel F, Supervision, Odyssey 2, Arcadia 2001, Mega Duck | RetroArch for Game Vault |
 | Home computers: MSX / MSX2 / MSX2+ / turbo R, C64, VIC-20, Plus/4, Amiga, ZX Spectrum, ZX81, Atari ST, Atari 800, Apple II, Macintosh, Amstrad CPC, BBC Micro, Thomson, PC-88, PC-98, Sharp X1, X68000 | RetroArch for Game Vault |
 | Arcade (FinalBurn Neo and MAME sets, known by their .zip name), Sega Model 3 | RetroArch for Game Vault |
-| PC games: DOS, ScummVM adventures, Doom, Quake, Wolfenstein 3D, Cave Story, RPG Maker 2000/2003 | RetroArch for Game Vault |
+| PC games: DOS, ScummVM adventures, Doom, Quake, Wolfenstein 3D, Cave Story, RPG Maker 2000/2003, Infocom text adventures | RetroArch for Game Vault |
 | Homebrew: PICO-8, CHIP-8, Arduboy, TIC-80, WASM-4, LowRes NX, Vircon32, Uzebox | RetroArch for Game Vault |
 | Flash games | Game Vault · Flash (ours, based on Ruffle) |
 | OpenBOR beat 'em ups | Game Vault · OpenBOR (ours, based on OpenBOR) |
+| Windows arcade games (early test) | Game Vault · Arcade (ours) |
 | Stream games from your PC (Sunshine) | Moonlight for Xbox |
 
 ## 🎮 Supported consoles
@@ -213,12 +220,12 @@ again. It updates whatever is out of date and keeps your games, saves and settin
 it shows a short notice once; everything keeps working, so you can update when it suits you. Only in the rare case of
 a serious problem in an old version does Game Vault ask for an update before starting games.
 
-**No PC? Update with your phone.** When a newer Game Vault, xemu, RetroArch or XBSX2 (our builds) is out, an orange **RT Update** badge shows in
+**No PC? Update with your phone.** When a newer Game Vault or one of our emulators is out, an orange **RT Update** badge shows in
 the library. Press **RT** and Game Vault shows two QR codes: the first downloads the new version to your phone, the
 second opens your Xbox's Device Portal (the phone must be on the same network as the Xbox). In the Device Portal, tap
 **Add** under *My games & apps*, choose the downloaded file, then **Next** and **Start**. When several are out, the
 emulators come first and Game Vault last (**RB** goes to the next one). Your games, saves and settings are kept.
-PPSSPP and Flycast still update through the setup on a PC, Mac or Linux machine.
+Only the original Flycast app (Dreamcast) still updates through the setup on a PC, Mac or Linux machine.
 
 ## 🐞 Reporting a problem
 
@@ -292,6 +299,13 @@ Game Vault is one launcher plus emulators built to work with it. **Install [Game
 | [Game Vault · PS Vita](https://github.com/skitzellez/Vita-GameVault) | PlayStation Vita (Vitox / Vita3K) | Xbox Series X&#124;S |
 | [Flycast for Game Vault](https://github.com/skitzellez/Flycast-GameVault) | Sega NAOMI, NAOMI 2 and Atomiswave arcade | Xbox Series X&#124;S |
 | [RetroArch for Game Vault](https://github.com/skitzellez/RetroArch-GameVault) | PlayStation, Dreamcast, arcade, classic consoles and computers (80+ systems) | Xbox Series X&#124;S, Android |
+| [PPSSPP for Game Vault](https://github.com/skitzellez/PPSSPP-GameVault) | PSP | Xbox Series X&#124;S |
+| [Game Vault · Ymir](https://github.com/skitzellez/Ymir-GameVault) | Sega Saturn | Xbox Series X&#124;S |
+| [Game Vault · Azahar](https://github.com/skitzellez/Azahar-GameVault) | Nintendo 3DS | Xbox Series X&#124;S |
+| [Game Vault · Ikemen GO](https://github.com/skitzellez/IkemenGO-GameVault) | MUGEN fighting games | Xbox Series X&#124;S |
+| [Game Vault · Visual Pinball](https://github.com/skitzellez/VPinball-GameVault) | Pinball tables | Xbox Series X&#124;S |
+| [Supermodel for Game Vault](https://github.com/skitzellez/Supermodel-GameVault) | Sega Model 3 arcade (inside RetroArch) | Xbox Series X&#124;S |
+| [Game Vault · Arcade](https://github.com/skitzellez/Arcade-GameVault) | Windows arcade games (early test) | Xbox Series X&#124;S |
 | [Game Vault · Flash](https://github.com/skitzellez/Flash-GameVault) | Flash games | Xbox Series X&#124;S |
 | [Game Vault · OpenBOR](https://github.com/skitzellez/OpenBOR-GameVault) | OpenBOR beat 'em up games | Xbox Series X&#124;S |
 | [Gambatte for Game Vault](https://github.com/skitzellez/Gambatte-GameVault) | Game Boy link cable in online rooms | Xbox Series X&#124;S, Android |
@@ -301,12 +315,14 @@ Game Vault is one launcher plus emulators built to work with it. **Install [Game
 
 | Project | What it is | Runs on |
 |---|---|---|
+| [gamevault.fyi](https://gamevault.fyi) | The Game Vault website | Any browser |
+| [Compatibility list](https://skitzellez.github.io/game-vault-compatibility/) | How games run, from real player reports | Any browser |
 | [Free games](https://github.com/skitzellez/game-vault-free-games) | Freeware and shareware for the FREE GAMES tab | Game Vault |
 | [Game Vault · Web](https://github.com/skitzellez/Web-GameVault) | Websites from the WEB menu, with the controller | Xbox Series X&#124;S |
 | [Fallout 1in2 for Xbox](https://github.com/skitzellez/Fallout1in2-Xbox) | The original Fallout, made for the controller | Xbox Series X&#124;S |
 | [Game Vault updates](https://github.com/skitzellez/game-vault-updates) | Update data Game Vault reads when it starts | Game Vault |
 
-**💬 Help, news and bug reports:** the [Game Vault Discord](https://discord.gg/RmhhWgguvw) (or this repo's Issues).
+**💬 Help, news and bug reports:** [gamevault.fyi](https://gamevault.fyi), the [Game Vault Discord](https://discord.gg/RmhhWgguvw) (or this repo's Issues).
 Please don't take problems with these builds to the original emulator teams: they don't make or support them.
 <!-- gv-family:end -->
 
