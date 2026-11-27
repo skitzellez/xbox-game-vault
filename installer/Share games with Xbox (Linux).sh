@@ -1,0 +1,18 @@
+#!/bin/bash
+# Copyright (c) 2026 Skitzelles - part of Game Vault, https://github.com/skitzellez/xbox-game-vault
+# PolyForm Noncommercial License 1.0.0: not for sale, and this notice stays in every copy.
+# Shares a games folder with Game Vault on the Xbox (see Share-Games-With-Xbox.sh).
+cd "$(dirname "$0")" || exit 1
+if [ ! -t 0 ] && [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then
+    self="$(pwd)/$(basename "$0")"
+    for term in x-terminal-emulator gnome-terminal konsole xfce4-terminal kgx mate-terminal tilix kitty alacritty lxterminal xterm; do
+        if command -v "$term" >/dev/null 2>&1; then
+            case "$term" in
+                gnome-terminal|kgx) exec "$term" -- bash "$self" "$@" ;;
+                xfce4-terminal|mate-terminal) exec "$term" -x bash "$self" "$@" ;;
+                *) exec "$term" -e bash "$self" "$@" ;;
+            esac
+        fi
+    done
+fi
+bash ./Share-Games-With-Xbox.sh "$@"
