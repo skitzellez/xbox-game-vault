@@ -147,13 +147,25 @@ def main():
         print(str(s.get("Value")) if s and s.get("Value") is not None else "")
     elif cmd == "package" and isinstance(d, dict):
         pref = (a[0] if a else "").lower()
-        p = next((x for x in (d.get("InstalledPackages") or []) if str(x.get("PackageFullName", "")).lower().startswith(pref)), None)
+        def vkey(x):
+            v = x.get("Version") or {}
+            return tuple(int(v.get(k) or 0) for k in ("Major", "Minor", "Build", "Revision"))
+        # the newest copy: after an update the console lists the old version next to the new one
+        ps = [x for x in (d.get("InstalledPackages") or []) if str(x.get("PackageFullName", "")).lower().startswith(pref)]
+        p = max(ps, key=vkey) if ps else None
         if not p:
             print("")
         else:
             v = p.get("Version") or {}
             ver = ".".join(str(v.get(k, "")) for k in ("Major", "Minor", "Build", "Revision"))
-            print("\t".join([str(p.get("PackageFullName", "")), str(p.get("PackageFamilyName") or ""), str(p.get("PackageRelativeId") or ""), ver]))
+            # ready: 1 when a player account (not only the console's own DefaultAccount) has it, "" when not listed
+            users = p.get("RegisteredUsers")
+            ready = ""
+            if users:
+                ready = "1" if any(not re.search(r"DefaultAccount$", str(u.get("UserDisplayName") or ""), re.I) for u in users) else "0"
+            print("	".join([str(p.get("PackageFullName", "")), str(p.get("PackageFamilyName") or ""), str(p.get("PackageRelativeId") or ""), ver, ready]))
+    elif cmd == "busy" and isinstance(d, dict):
+        print("1" if any(re.match(r"GamerDad\.", str(x.get("PackageFullName") or ""), re.I) for x in (d.get("Processes") or [])) else "")
     elif cmd == "state" and isinstance(d, dict):
         if d.get("Success"):
             print("ok")
@@ -168,7 +180,8 @@ def main():
             print("ERROR")
             return
         rx = re.compile(a[0] if a else "", re.I)
-        rels = sorted(d, key=lambda x: str(x.get("published_at") or ""), reverse=True)
+        # test releases (pre-releases) are skipped, as in setup-helper.js
+        rels = sorted([x for x in d if not x.get("prerelease")], key=lambda x: str(x.get("published_at") or ""), reverse=True)
         for rel in rels:
             assets = [x for x in (rel.get("assets") or []) if rx.search(str(x.get("name", "")))]
             if not assets:

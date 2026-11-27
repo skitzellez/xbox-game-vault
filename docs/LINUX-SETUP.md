@@ -123,6 +123,9 @@ network, and keep your saves synced with `Game Vault saves` (see [docs/SAVE-SYNC
 6. On the Xbox, press **LT** in Game Vault and enter the computer address (`\\<ip>\XboxGames`), user name (`xboxgames`)
    and password shown in the terminal.
 
+If the games folder is on a drive without Linux permissions (exFAT or NTFS), the share is read-only: network games
+work, but Save Sync needs the folder on a Linux drive (ext4) or on the PC's own disk.
+
 ---
 
 ## Updating later
@@ -142,4 +145,5 @@ phone (see the main README).
 | **cannot be checked: ... GitHub may be limiting requests** | GitHub allows only a few checks per hour from one address. Wait an hour and run it again. |
 | An app shows **FAILED** | Run the setup again. It retries only what is missing. |
 | Xbox cannot connect to the `XboxGames` network share | Check that your firewall allows Samba (`sudo ufw allow Samba` or `sudo firewall-cmd --permanent --add-service=samba && sudo firewall-cmd --reload`) and that `smbd` (`smb` on Fedora/Arch) is running. |
+| Save Sync does not save to a shared exFAT or NTFS drive | Those drives have no Linux permissions, so the share is read-only to keep your games safe. Put the games folder on an ext4 drive or on the PC's own disk, and run `Share-Games-With-Xbox.sh` again. |
 | Xbox One: **needs an NTFS drive with read access for apps** | Linux cannot set the Windows `ALL APPLICATION PACKAGES` NTFS security descriptor. Prepare that USB drive once on a Windows PC (see the main README). On a Series X\|S this is not needed. |

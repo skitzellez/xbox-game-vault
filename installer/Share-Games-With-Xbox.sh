@@ -43,9 +43,11 @@ pause_end() {
 fail() {
     echo ""
     say "Something went wrong: $1" Red
-    local err_file="/tmp/Game Vault share error.txt"
-    printf '%s %s\n' "$(date)" "$1" >> "$err_file" 2>/dev/null
-    say "(also written to $err_file)"
+    # a new private file each time: this part can run as root, so never write to a fixed name in /tmp
+    local err_file; err_file="$(mktemp "${TMPDIR:-/tmp}/gamevault-share-error.XXXXXX" 2>/dev/null)"
+    if [ -n "$err_file" ] && printf '%s %s\n' "$(date)" "$1" > "$err_file" 2>/dev/null; then
+        say "(also written to $err_file)"
+    fi
     pause_end 1
 }
 
@@ -100,7 +102,8 @@ update_smb_conf_file() {
         printf '   valid users = %s\n' "$Account"
         [ -n "$force_user" ] && printf '   force user = %s\n' "$force_user"
         printf '   browseable = yes\n'
-        printf '   read only = no\n'
+        # without ACLs the share runs as the folder's owner: keep it read-only then, so the Xbox can never change games
+        if [ -n "$force_user" ]; then printf '   read only = yes\n'; else printf '   read only = no\n'; fi
         printf '   guest ok = no\n'
         printf '   create mask = 0664\n'
         printf '   directory mask = 0775\n'
@@ -196,7 +199,7 @@ if [ -z "$have_samba" ]; then
         [yY]*|"")
             if command -v apt-get >/dev/null 2>&1; then apt-get update && apt-get install -y samba acl
             elif command -v dnf >/dev/null 2>&1; then dnf install -y samba acl
-            elif command -v pacman >/dev/null 2>&1; then pacman -Sy --noconfirm samba acl
+            elif command -v pacman >/dev/null 2>&1; then pacman -S --needed --noconfirm samba acl
             elif command -v zypper >/dev/null 2>&1; then zypper --non-interactive install samba acl
             else fail "Could not find apt-get, dnf, pacman or zypper. Install 'samba' and 'acl' and run this again."; fi
             ;;
@@ -319,8 +322,11 @@ if command -v ip >/dev/null 2>&1; then
     ip="$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="src") {print $(i+1); exit}}')"
 fi
 [ -z "$ip" ] && command -v hostname >/dev/null 2>&1 && ip="$(hostname -I 2>/dev/null | awk '{print $1}')"
-[ -z "$ip" ] && ip="127.0.0.1"
 host_name="$(hostname -s 2>/dev/null || hostname 2>/dev/null || echo "LINUXPC")"
+if [ -z "$ip" ]; then
+    say "Could not find this PC's network address: check that it is on the same network as the Xbox." Yellow
+    ip="$host_name"
+fi
 keep_out="$([ "$keep" = "true" ] && echo "True" || echo "False")"
 
 echo ""
@@ -329,9 +335,18 @@ if [ "$keep" = "true" ]; then
     echo "Save sync can now keep your saves in '$saves' (Options in Game Vault: Save sync)."
 else
     say "Done. On your phone (Game Vault, LT on the Xbox), type:" Green
-    echo "   Computer:   \\\\$ip\\$Share      (or \\\\$host_name\\$Share)"
+    if [ "$ip" = "$host_name" ]; then
+        echo "   Computer:   \\\\$host_name\\$Share"
+    else
+        echo "   Computer:   \\\\$ip\\$Share      (or \\\\$host_name\\$Share)"
+    fi
     echo "   User name:  $Account"
     echo "   Password:   the one you just chose"
+fi
+if [ -n "$FORCE_USER" ]; then
+    echo ""
+    say "This drive has no Linux permissions (for example exFAT or NTFS), so the games are shared read-only." Yellow
+    say "Network games work. Save sync needs the folder on a Linux drive (ext4) or on this PC's own disk." Yellow
 fi
 echo ""
 echo "To stop sharing later: remove the [$Share] section in /etc/samba/smb.conf and restart smbd."
